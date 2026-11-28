@@ -158,8 +158,9 @@ type manifest struct {
 	Width      int      `json:"width"`
 }
 
-// Preview returns a play's scrub-preview manifest (PreviewManifest) or one
-// of its sheets, once they're made. Only single-file versions have
+// Preview returns a play's scrub-preview manifest (PreviewManifest), one
+// of its sheets, or all its frames as a BIF file (PreviewBIF), once
+// they're made. Only single-file versions have
 // previews. Previews that aren't made yet return ErrNotFound. found is
 // false for a name that's neither the manifest nor a sheet.
 func (s *Service) Preview(ctx context.Context, sid id.ID, name string) (m Media, found bool, err error) {
@@ -182,6 +183,13 @@ func (s *Service) Preview(ctx context.Context, sid id.ID, name string) (m Media,
 			return Media{}, false, err
 		}
 		return Media{Data: b, Type: "application/json"}, true, nil
+	}
+	if name == PreviewBIF {
+		b, err := bif(p, dir, pl.files[0].Probe.Duration)
+		if err != nil {
+			return Media{}, false, err
+		}
+		return Media{Data: b, Type: "application/octet-stream"}, true, nil
 	}
 	if !slices.Contains(p.SheetNames(), name) {
 		return Media{}, false, nil

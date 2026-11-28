@@ -1,0 +1,225 @@
+import "pkg:/source/generated/types.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+' Works as ContentNodes for the RowLists' cards (components/PosterItem).
+namespace KivoContent
+
+    ' Below a card's artwork, the caption's height.
+    const captionHeight = 80
+
+    ' The work kinds the TV shows: no books, which aren't on the TV.
+    function tvKinds() as object
+        return ["movie", "series", "episode", "season", "video", "extra"]
+    end function
+
+    function isTvKind(kind as string) as boolean
+        for each tv in KivoContent.tvKinds()
+            if tv = kind then return true
+        end for
+        return false
+    end function
+
+    ' [works] without the kinds the TV doesn't show.
+    function tvWorks(works as dynamic) as object
+        out = []
+        if works = invalid then return out
+        for each work in works
+            if KivoContent.isTvKind(work.kind) then out.Push(work)
+        end for
+        return out
+    end function
+
+    ' The libraries the TV shows: every kind but audiobooks.
+    function tvLibraries(libraries as object) as object
+        out = []
+        for each library in libraries
+            if library.kind <> KivoApi.LibraryKind.audiobooks then out.Push(library)
+        end for
+        return out
+    end function
+
+    ' A row of cards: [works] (WorkSummary list) under [title], drawn as
+    ' posters, or as landscape stills when [landscape].
+    function row(title as string, works as KivoApi.WorkSummary[], landscape as boolean) as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.title = title
+        for each work in works
+            node.AppendChild(KivoContent.card(work, landscape))
+        end for
+        return node
+    end function
+
+    function card(work as KivoApi.WorkSummary, landscape as boolean) as object
+        return KivoContent.fill(KivoContent.blank(), work, landscape)
+    end function
+
+    ' Puts [work] on the card [node], as card makes it, for a grid that
+    ' lists blank cards first and fills them a page at a time.
+    function fill(node as object, work as KivoApi.WorkSummary, landscape as boolean) as object
+        node.workId = work.id
+        node.kind = work.kind
+        node.played = work.userState <> invalid and work.userState.played = true
+        node.title = KivoContent.cardTitle(work)
+        size = KivoContent.cardSize(landscape)
+        image = work.images.poster
+        if landscape
+            image = work.images.still
+            if image = invalid then image = work.images.backdrop
+        end if
+        node.imageUri = Kivo.imageUrl(image, size[0])
+        node.caption = KivoContent.caption(work)
+        node.progress = 0
+        if work.userState <> invalid and work.userState.positionMs <> invalid and work.durationMs <> invalid and work.durationMs > 0
+            node.progress = work.userState.positionMs / work.durationMs
+        end if
+        ' The badges: an episode's code, an unplayed count or a played
+        ' check, and at most one status.
+        node.code = ""
+        if work.episode <> invalid then node.code = KivoUi.episodeCode(work.episode)
+        node.unplayed = 0
+        if work.series <> invalid and work.series.unplayedCount <> invalid then node.unplayed = work.series.unplayedCount
+        if work.season <> invalid and work.season.unplayedCount <> invalid then node.unplayed = work.season.unplayedCount
+        node.status = ""
+        if work.matchState = "identifying" then node.status = "IDENTIFYING"
+        if work.matchState = "unmatched" then node.status = "UNMATCHED"
+        node.available = work.available <> false
+        node.episodeSeriesId = ""
+        if work.episode <> invalid and work.episode.seriesId <> invalid then node.episodeSeriesId = work.episode.seriesId
+        node.libraryId = ""
+        if work.libraryId <> invalid then node.libraryId = work.libraryId
+        node.positionMs = -1
+        if work.userState <> invalid and work.userState.positionMs <> invalid then node.positionMs = work.userState.positionMs
+        return node
+    end function
+
+    ' A card's title: an episode, or a season bundled in Recently Added,
+    ' goes by its series; a movie with its edition, "Blade Runner · Final Cut".
+    function cardTitle(work as KivoApi.WorkSummary) as string
+        if work.kind = KivoApi.WorkKind.episode and work.episode <> invalid and work.episode.seriesTitle <> invalid then return work.episode.seriesTitle
+        if work.kind = KivoApi.WorkKind.season and work.series <> invalid and work.series.recentlyAddedCount <> invalid and work.season <> invalid and work.season.seriesTitle <> invalid then return work.season.seriesTitle
+        if work.movie <> invalid and work.movie.edition <> invalid and work.movie.edition <> "" then return work.title + " · " + work.movie.edition
+        return work.title
+    end function
+
+    ' A card with nothing on it yet: what it opens (a work, a person or a
+    ' collection), its artwork, caption and progress, and whether it's played.
+    function blank() as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.AddFields({ workId: "", personId: "", collectionId: "", listId: "", kind: "", imageUri: "", caption: "", progress: 0.0, played: false, code: "", unplayed: 0, status: "", available: true, episodeSeriesId: "", libraryId: "", positionMs: -1, round: false, dashed: false })
+        return node
+    end function
+
+    ' A row of people, each with their round photo and [credit.caption]
+    ' under their name: an actor's character, or "Actor · 23 titles".
+    function people(title as string, credits as object) as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.title = title
+        for each credit in credits
+            node.AppendChild(KivoContent.blank())
+            card = node.GetChild(node.GetChildCount() - 1)
+            card.personId = credit.personId
+            card.title = credit.name
+            card.round = true
+            card.imageUri = Kivo.imageUrl(credit.photo, 240)
+            if credit.caption <> invalid then card.caption = credit.caption
+        end for
+        return node
+    end function
+
+    ' A credit's role as people read it: Actor, Director, Writer.
+    function roleLabel(role as dynamic) as string
+        labels = { actor: "Actor", director: "Director", writer: "Writer", author: "Author", narrator: "Narrator" }
+        if role <> invalid and labels[role] <> invalid then return labels[role]
+        if role = invalid then return ""
+        return role
+    end function
+
+    ' A row's last card, which opens the rest: "See all" on its face.
+    function seeAll(listId as string) as object
+        node = KivoContent.blank()
+        node.listId = listId
+        node.title = "See all"
+        node.dashed = true
+        return node
+    end function
+
+    ' A row of collections (CollectionSummary), each by its poster and name,
+    ' with how many works it has under it.
+    function collections(title as string, items as object) as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.title = title
+        for each item in items
+            node.AppendChild(KivoContent.collection(KivoContent.blank(), item))
+        end for
+        return node
+    end function
+
+    function collection(card as object, item as object) as object
+        card.collectionId = item.id
+        card.title = item.name
+        if item.images <> invalid then card.imageUri = Kivo.imageUrl(item.images.poster, 240)
+        card.caption = KivoContent.collectionCount(item.workCount, item.source)
+        return card
+    end function
+
+    ' How many works a collection has: a movie collection counts its
+    ' movies; a videos library's folder, what it holds.
+    function collectionCount(count as dynamic, source as dynamic) as string
+        if count = invalid then return ""
+        if source = "provider" then return KivoUi.plural(count, "movie", "movies")
+        return KivoUi.plural(count, "item", "items")
+    end function
+
+    ' The line under a card's title, as the Android TV app's: a show's
+    ' years or its new episodes, a season's episodes, an episode's title
+    ' and time left, a movie's time left in progress, else the year.
+    function caption(work as KivoApi.WorkSummary) as string
+        position = invalid
+        if work.userState <> invalid then position = work.userState.positionMs
+        added = invalid
+        if work.series <> invalid then added = work.series.recentlyAddedCount
+        if work.kind = KivoApi.WorkKind.series
+            if added <> invalid then return KivoUi.plural(added, "episode", "episodes")
+            last = invalid
+            if work.series <> invalid then last = work.series.lastAirYear
+            if work.year <> invalid and last <> invalid and last <> work.year then return work.year.ToStr() + "–" + last.ToStr()
+            if work.year <> invalid then return work.year.ToStr()
+            return ""
+        end if
+        if work.kind = KivoApi.WorkKind.season
+            if added <> invalid then return work.title + " · " + KivoUi.plural(added, "episode", "episodes")
+            if work.season <> invalid and work.season.episodeCount <> invalid then return KivoUi.plural(work.season.episodeCount, "episode", "episodes")
+            return ""
+        end if
+        if work.kind = KivoApi.WorkKind.episode
+            if position <> invalid and work.durationMs <> invalid then return work.title + " · " + KivoUi.timeLeft(work.durationMs - position)
+            return work.title
+        end if
+        if work.kind = KivoApi.WorkKind.movie and position <> invalid and work.durationMs <> invalid then return KivoUi.timeLeft(work.durationMs - position)
+        if work.year <> invalid then return work.year.ToStr()
+        return ""
+    end function
+
+    ' Where a card goes: a work's page, a person's or a collection's.
+    function target(card as object) as object
+        if card.personId <> "" then return { screen: "RowsScreen", params: { kind: "person", id: card.personId } }
+        if card.collectionId <> "" then return { screen: "RowsScreen", params: { kind: "collection", id: card.collectionId } }
+        if card.listId <> "" then return { screen: "RowsScreen", params: { kind: "list", id: card.listId } }
+        return { screen: "DetailScreen", params: { id: card.workId } }
+    end function
+
+    ' A row's cards' sizes, for a RowList's rowItemSize, and its height,
+    ' for rowHeights: posters, or landscape stills when [landscape].
+    function rowSize(landscape as boolean) as object
+        size = KivoContent.cardSize(landscape)
+        return { item: [size[0], size[1] + KivoContent.captionHeight], height: size[1] + KivoContent.captionHeight + 60 }
+    end function
+
+    ' A card's artwork's width and height: six posters across a row, or three stills.
+    function cardSize(landscape as boolean) as object
+        if landscape then return [480, 270]
+        return [240, 360]
+    end function
+
+end namespace

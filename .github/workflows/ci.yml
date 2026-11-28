@@ -277,3 +277,22 @@ jobs:
         with:
           node-version: 24
       - run: npm test
+
+  # The Roku app and its tests compile with BrighterScript and pass bslint.
+  # Its Rooibos tests run only on a Roku, so not here; its generated API and
+  # tokens are checked by the server's check-generated and :tokens:test.
+  roku:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/roku
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: clients/roku/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm run check:types

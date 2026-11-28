@@ -1,0 +1,325 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/states.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.rows = m.top.FindNode("rows")
+    m.state = m.top.FindNode("state")
+    m.problem = m.top.FindNode("problem")
+    KivoUi.style(m.problem, KivoTokens.TextSize.sm, KivoTokens.Color.danger)
+    font = CreateObject("roSGNode", "Font")
+    font.uri = "font:BoldSystemFontFile"
+    font.size = KivoTokens.TextSize.base
+    m.rows.rowLabelFont = font
+    m.rows.rowLabelColor = KivoTokens.Color.text
+    m.rows.ObserveField("rowItemSelected", "onSelected")
+    KivoUi.style(m.top.FindNode("hint"), KivoTokens.TextSize.sm, KivoTokens.Color.textSubtle)
+    m.nav = m.top.FindNode("nav")
+    m.nav.ObserveField("chosen", "onNav")
+    m.nav.ObserveField("closed", "closeNav")
+    m.more = m.top.FindNode("more")
+    m.more.ObserveField("chosen", "onMoreLibrary")
+    m.more.ObserveField("closed", "closeMore")
+    m.menu = m.top.FindNode("menu")
+    m.menu.ObserveField("navigate", "onMenuNavigate")
+    m.menu.ObserveField("changed", "load")
+    m.menu.ObserveField("problem", "onMenuProblem")
+    m.menu.ObserveField("closed", "onMenuClosed")
+    m.state.ObserveField("action", "onState")
+    m.libraries = []
+    m.admin = false
+    m.tasks = {}
+    m.tasks.user = Kivo.send(KivoApi.getCurrentUser(), "onUser")
+    load()
+end sub
+
+sub focus()
+    if m.nav.visible
+        m.nav.callFunc("focus")
+    else if m.more.visible
+        m.more.callFunc("focus")
+    else if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.state.visible
+        m.state.callFunc("focus")
+    else
+        m.rows.SetFocus(true)
+    end if
+    ' What's in progress may have changed while another screen showed.
+    if m.loaded = true then load()
+end sub
+
+' Reads Home and the libraries again; the rows show once both are back,
+' as a row of a library the TV doesn't show is left out.
+sub load()
+    m.problem.text = ""
+    m.homeBody = invalid
+    m.librariesRead = false
+    m.tasks.home = Kivo.send(KivoApi.getHome(), "onHome")
+    m.tasks.libraries = Kivo.send(KivoApi.listLibraries(), "onLibraries")
+end sub
+
+' Whether the user is an admin, for what an empty Home says.
+sub onUser(event as object)
+    m.tasks.user = invalid
+    response = event.GetData()
+    answer = KivoApi.getCurrentUserAnswer(response)
+    if response.code = 200 then m.admin = answer.admin = true
+end sub
+
+' The libraries the TV shows (not audiobooks), in the user's order.
+sub onLibraries(event as object)
+    m.tasks.libraries = invalid
+    response = event.GetData()
+    answer = KivoApi.listLibrariesAnswer(response)
+    m.librariesRead = true
+    if response.code = 200 then m.libraries = KivoContent.tvLibraries(answer.items)
+    showRows()
+end sub
+
+' The menu in the rail's place: Search, Home, Lists, the pinned
+' libraries, More libraries with the others, and Settings.
+sub openNav()
+    items = [{ id: "search", label: "Search" }, { id: "home", label: "Home" }, { id: "lists", label: "Lists" }]
+    others = 0
+    for each lib in tvLibraryList()
+        if lib.pinned = true
+            items.Push({ id: "library:" + lib.id, label: lib.name })
+        else
+            others = others + 1
+        end if
+    end for
+    if others > 0 then items.Push({ id: "more", label: "More libraries" })
+    items.Push({ id: "settings", label: "Settings" })
+    m.nav.title = "Kivo"
+    m.nav.checkedId = ""
+    m.nav.items = items
+    m.nav.visible = true
+    m.nav.callFunc("focus")
+end sub
+
+sub closeNav()
+    m.nav.visible = false
+    focus()
+end sub
+
+sub onNav()
+    id = m.nav.chosen
+    m.nav.visible = false
+    if id = "home"
+        focus()
+    else if id = "search"
+        m.top.navigate = { screen: "SearchScreen", params: {} }
+    else if id = "lists"
+        m.top.navigate = { screen: "ListsScreen", params: {} }
+    else if id = "settings"
+        m.top.navigate = { screen: "SettingsScreen", params: {} }
+    else if id = "more"
+        items = []
+        for each lib in tvLibraryList()
+            if lib.pinned <> true then items.Push({ id: lib.id, label: lib.name })
+        end for
+        m.more.title = "More libraries"
+        m.more.checkedId = ""
+        m.more.items = items
+        m.more.visible = true
+        m.more.callFunc("focus")
+    else if id.Left(8) = "library:"
+        openLibrary(id.Mid(8))
+    end if
+end sub
+
+sub onMoreLibrary()
+    id = m.more.chosen
+    m.more.visible = false
+    openLibrary(id)
+end sub
+
+sub closeMore()
+    m.more.visible = false
+    focus()
+end sub
+
+sub openLibrary(id as string)
+    for each lib in tvLibraryList()
+        if lib.id = id then m.top.navigate = { screen: "LibraryScreen", params: { id: lib.id, name: lib.name, kind: lib.kind } }
+    end for
+end sub
+
+sub onHome(event as object)
+    response = event.GetData()
+    answer = KivoApi.getHomeAnswer(response)
+    m.tasks.home = invalid
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        m.rows.visible = false
+        KivoStates.failed(m.state, response)
+        if not m.nav.visible and not m.menu.visible then m.state.callFunc("focus")
+        return
+    end if
+    m.homeBody = answer
+    showRows()
+end sub
+
+sub onState()
+    action = m.state.action
+    if action = "retry"
+        load()
+    else if action = "changeServer"
+        m.top.navigate = { changeServer: true }
+    end if
+end sub
+
+function shownLibrary(id as string) as dynamic
+    for each lib in tvLibraryList()
+        if lib.id = id then return lib
+    end for
+    return invalid
+end function
+
+' Home's rows the TV shows: Continue Watching, Recently Added and lists
+' (no book rows, and no kind it doesn't know), empty rows and rows of
+' libraries it doesn't show left out. Continue Watching and a videos
+' library's rows are landscape, the others posters; a list ends in See
+' all. Once both Home and the libraries are read.
+sub showRows()
+    if homeAnswer() = invalid or m.librariesRead <> true then return
+    m.loaded = true
+    root = CreateObject("roSGNode", "ContentNode")
+    sizes = []
+    heights = []
+    m.shownRows = []
+    for each row in homeAnswer().rows
+        ' A list can hold books, which aren't on the TV; a row left with none shows nothing.
+        if row.kind = KivoApi.HomeRowKind.list then row.items = KivoContent.tvWorks(row.items)
+        library = invalid
+        if row.library <> invalid then library = shownLibrary(row.library.id)
+        title = rowTitle(row, library)
+        if title <> invalid and row.items.Count() > 0 and (row.library = invalid or library <> invalid)
+            landscape = row.kind = KivoApi.HomeRowKind.continueWatching or (library <> invalid and library.kind = KivoApi.LibraryKind.videos)
+            node = KivoContent.row(title, row.items, landscape)
+            if row.kind = KivoApi.HomeRowKind.list and row.list <> invalid then node.AppendChild(KivoContent.seeAll(row.list.id))
+            root.AppendChild(node)
+            m.shownRows.Push(row)
+            size = KivoContent.rowSize(landscape)
+            sizes.Push(size.item)
+            heights.Push(size.height)
+        end if
+    end for
+    if root.GetChildCount() = 0
+        m.rows.visible = false
+        showEmpty()
+        return
+    end if
+    KivoStates.clear(m.state)
+    m.rows.visible = true
+    ' A reload keeps the focus on the card it was on, where that's still there.
+    was = m.rows.rowItemFocused
+    m.rows.rowItemSize = sizes
+    m.rows.rowHeights = heights
+    m.rows.content = root
+    if was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
+        if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
+    end if
+    if not m.nav.visible and not m.more.visible and not m.menu.visible then m.rows.SetFocus(true)
+end sub
+
+' What an empty Home says: no libraries (an admin adds them in the web
+' app; anyone else asks one), every row hidden, or nothing scanned yet.
+sub showEmpty()
+    if tvLibraryList().Count() = 0 and m.admin
+        KivoStates.empty(m.state, "No libraries", "Add libraries in the web app. They appear here as they're scanned.")
+    else if tvLibraryList().Count() = 0
+        KivoStates.empty(m.state, "No libraries", "Ask an admin for access.")
+    else if homeAnswer().allHidden = true
+        KivoStates.empty(m.state, "Your Home is empty", "Choose its rows in Settings, under Home.")
+    else
+        KivoStates.empty(m.state, "Nothing here yet", "Items appear here as libraries are scanned.")
+    end if
+end sub
+
+' A Home row's title, as the Android TV app words it; invalid for a kind
+' the TV doesn't show.
+function rowTitle(row as KivoApi.HomeRow, library as dynamic) as dynamic
+    if row.kind = KivoApi.HomeRowKind.continueWatching then return "Continue Watching"
+    if row.kind = KivoApi.HomeRowKind.list
+        if row.list <> invalid then return row.list.name
+        return ""
+    end if
+    if row.kind = KivoApi.HomeRowKind.recentlyAdded
+        if library <> invalid then return "Recently Added in " + library.name
+        return "Recently Added"
+    end if
+    return invalid
+end function
+
+sub onSelected()
+    at = m.rows.rowItemSelected
+    card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+    if card.dashed
+        m.top.navigate = { screen: "RowsScreen", params: { kind: "list", id: card.listId } }
+        return
+    end if
+    m.top.navigate = KivoContent.target(card)
+end sub
+
+' * on a card: its menu, which in Continue Watching can also take it off the row.
+sub openMenu()
+    if m.rows.content = invalid or not m.rows.visible then return
+    at = m.rows.rowItemFocused
+    card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+    if card = invalid or card.workId = "" then return
+    where = {}
+    if m.shownRows[at[0]].kind = KivoApi.HomeRowKind.continueWatching then where.row = "continueWatching"
+    m.menu.callFunc("open", card, where)
+end sub
+
+sub onMenuNavigate()
+    m.top.navigate = m.menu.navigate
+end sub
+
+sub onMenuProblem()
+    m.problem.text = m.menu.problem
+end sub
+
+sub onMenuClosed()
+    if m.rows.visible then m.rows.SetFocus(true)
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "options" and not m.nav.visible and not m.more.visible and not m.menu.visible
+        openMenu()
+        return true
+    end if
+    if key = "left" and not m.nav.visible and not m.more.visible and not m.menu.visible
+        openNav()
+        return true
+    end if
+    ' Back away from the first card moves focus to it; on it, the scene asks to exit.
+    if key = "back" and m.rows.visible and m.rows.IsInFocusChain()
+        at = m.rows.rowItemFocused
+        if at <> invalid and at.Count() = 2 and (at[0] <> 0 or at[1] <> 0)
+            m.rows.jumpToRowItem = [0, 0]
+            return true
+        end if
+    end if
+    return false
+end function
+
+' Home's rows, as the server sent them, as its type.
+function homeAnswer() as KivoApi.Home
+    return m.homeBody
+end function
+
+' The libraries the TV shows, as its type.
+function tvLibraryList() as KivoApi.Library[]
+    return m.libraries
+end function

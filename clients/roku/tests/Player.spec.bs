@@ -1,0 +1,87 @@
+' Up next, Skip and the play's tracks, as the core has them (its UpNext,
+' Markers and PlayTracks tests), and a library grid's query (SmartLists).
+namespace tests
+
+    @suite("player and grid")
+    class PlayerTests extends rooibos.BaseTestSuite
+
+        @describe("up next")
+
+        @it("appears 30, 35 or 40 seconds before the end by the episode's length, or at final credits that come sooner")
+        sub _()
+            m.assertEqual(KivoUpNext.atMs(1800000, invalid), 1770000)
+            m.assertEqual(KivoUpNext.atMs(2400000, invalid), 2365000)
+            m.assertEqual(KivoUpNext.atMs(3000000, invalid), 2960000)
+            m.assertEqual(KivoUpNext.atMs(1800000, { startMs: 1700000 }), 1700000)
+            m.assertEqual(KivoUpNext.atMs(1800000, { startMs: 1790000 }), 1770000)
+            m.assertEqual(KivoUpNext.atMs(500000, invalid), -1)
+        end sub
+
+        @it("plays the next episode, waits, opens the series or goes back at the end")
+        sub _()
+            m.assertEqual(KivoUpNext.playEnd(true, true, true), "next")
+            m.assertEqual(KivoUpNext.playEnd(true, true, false), "wait")
+            m.assertEqual(KivoUpNext.playEnd(true, false, true), "series")
+            m.assertEqual(KivoUpNext.playEnd(false, true, true), "close")
+        end sub
+
+        @describe("markers")
+
+        @it("keeps the kinds it knows, none shorter than three seconds, and finds final credits")
+        sub _()
+            play = { markers: [
+                { kind: "intro", startMs: 0, endMs: 60000 },
+                { kind: "recap", startMs: 60000, endMs: 61000 },
+                { kind: "preview", startMs: 70000, endMs: 90000 },
+                { kind: "credits", startMs: 1700000, endMs: 1800000, final: true }
+            ] }
+            known = KivoUpNext.known(play)
+            m.assertEqual(known.Count(), 2)
+            m.assertEqual(KivoUpNext.markerAt(known, 30000).kind, "intro")
+            m.assertInvalid(KivoUpNext.markerAt(known, 60500))
+            m.assertEqual(KivoUpNext.credits(known).startMs, 1700000)
+        end sub
+
+        @describe("tracks")
+
+        @it("shows a stream rendition by its place among the stream's renditions, else asks for a new play")
+        sub _()
+            play = { tracks: [
+                { trackId: "a1", type: "audio", selected: true, delivery: "stream" },
+                { trackId: "a2", type: "audio", delivery: "stream" },
+                { trackId: "a3", type: "audio" },
+                { trackId: "s1", type: "subtitle", delivery: "burn" },
+                { trackId: "off", type: "subtitle", selected: true, delivery: "none" }
+            ] }
+            m.assertEqual(KivoTracks.show(play, "a2"), { how: "stream", index: 1 })
+            m.assertEqual(KivoTracks.show(play, "a3").how, "new")
+            m.assertEqual(KivoTracks.show(play, "s1").how, "burn")
+            m.assertEqual(KivoTracks.show(play, "off").how, "off")
+            m.assertEqual(KivoTracks.selected(play, "audio"), "a1")
+            m.assertEqual(KivoTracks.selected(play, "subtitle"), "off")
+        end sub
+
+        @describe("library grid")
+
+        @it("asks for the library's kind sorted by the sort, with every filter a rule")
+        sub _()
+            filters = KivoGrid.emptyFilters()
+            filters.played = "unplayed"
+            filters.genres = ["Drama"]
+            filters.decade = "1990"
+            body = KivoGrid.request("lib", "movies", "rating", filters, 60)
+            m.assertEqual(body.library, "lib")
+            m.assertEqual(body.offset, 60)
+            m.assertEqual(body.query.kinds, ["movie"])
+            m.assertEqual(body.query.sort, [{ field: "rating" }])
+            m.assertEqual(body.query.where.rules, [
+                { field: "playState", op: "anyOf", values: ["unplayed"] },
+                { field: "genre", op: "anyOf", values: ["Drama"] },
+                { field: "year", op: "between", values: ["1990", "1999"] }
+            ])
+            m.assertInvalid(KivoGrid.request("lib", "shows", "title", KivoGrid.emptyFilters(), 0).query.where)
+        end sub
+
+    end class
+
+end namespace

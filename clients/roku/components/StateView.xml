@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- An empty or failed state, as the Android TV app's: a title, a
+     sentence and its buttons, each { id, label }. With countdown set it
+     counts the seconds down in the sentence ("Retrying in 10 s…") and
+     then acts as its first button would. Choosing a button sets action
+     to its id. -->
+<component name="StateView" extends="Group">
+  <interface>
+    <field id="title" type="string" onChange="onText" />
+    <field id="sentence" type="string" onChange="onText" />
+    <field id="buttons" type="array" onChange="onButtons" />
+    <field id="countdown" type="integer" onChange="onCountdown" />
+    <field id="textWidth" type="integer" value="1500" onChange="onWidth" />
+    <field id="action" type="string" alwaysNotify="true" />
+    <function name="focus" />
+  </interface>
+  <children>
+    <Label id="heading" width="1500" wrap="true" maxLines="2" />
+    <Label id="line" translation="[0, 64]" width="1500" wrap="true" maxLines="3" />
+    <ButtonGroup id="actions" translation="[0, 180]" layoutDirection="horiz" itemSpacings="[24]" minWidth="280" />
+    <Timer id="tick" duration="1" repeat="true" />
+  </children>
+</component>

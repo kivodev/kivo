@@ -26,6 +26,8 @@
         "clients/apple/project.yml",
         "clients/tizen/config.xml",
         { "type": "json", "path": "clients/webos/appinfo.json", "jsonpath": "$.version" },
+        { "type": "generic", "path": "clients/roku/manifest" },
+        { "type": "json", "path": "clients/roku/package.json", "jsonpath": "$.version" },
         "clients/chromecast/src/config.js",
         { "type": "json", "path": "clients/chromecast/package.json", "jsonpath": "$.version" }
       ]

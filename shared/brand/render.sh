@@ -40,3 +40,16 @@ cp tmdb.svg "$assets/TMDBLogo.imageset/TMDBLogo.svg"
 ios="$root/clients/apple/Kivo/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
 render 1024 "$ios"
 magick "$ios" -alpha off -define png:exclude-chunks=date,time "$ios"
+
+# Roku's channel poster and splash are full frames: the TV icon's mark, or
+# the lockup, centred on the dark theme's ground at the size Roku asks for.
+roku="$root/clients/roku/images"
+mkdir -p "$roku"
+frame() { # width height source x y inner-width inner-height output
+	inner=$(sed "s|<svg xmlns=\"http://www.w3.org/2000/svg\"|<svg x=\"$4\" y=\"$5\" width=\"$6\" height=\"$7\"|" "$3")
+	printf '<svg xmlns="http://www.w3.org/2000/svg" width="%s" height="%s"><rect width="100%%" height="100%%" fill="#0d0e12"/>%s</svg>' "$1" "$2" "$inner" |
+		rsvg-convert -o "$8"
+}
+frame 540 405 tv-icon.svg 120 52 300 300 "$roku/icon-fhd.png"
+frame 290 218 tv-icon.svg 64 28 162 162 "$roku/icon-hd.png"
+frame 1920 1080 lockup.svg 601 440 718 200 "$roku/splash-fhd.png"

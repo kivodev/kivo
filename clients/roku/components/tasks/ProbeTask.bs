@@ -1,0 +1,64 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/shared/address.bs"
+import "pkg:/source/shared/session.bs"
+
+' How long each address has to answer.
+const answerMs = 8000
+
+sub init()
+    m.top.functionName = "work"
+end sub
+
+sub work()
+    urls = Kivo.addressCandidates(m.top.address)
+    port = CreateObject("roMessagePort")
+    asked = {}
+    answers = {}
+    for each url in urls
+        transfer = CreateObject("roUrlTransfer")
+        transfer.SetMessagePort(port)
+        transfer.SetUrl(url + KivoApi.getServer().path)
+        transfer.SetHeaders(Kivo.identityHeaders())
+        if url.Left(8) = "https://"
+            transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
+            transfer.InitClientCertificates()
+        end if
+        if transfer.AsyncGetToString() then asked[transfer.GetIdentity().ToStr()] = { url: url, transfer: transfer }
+    end for
+    deadline = CreateObject("roTimespan")
+    while answers.Count() < asked.Count() and deadline.TotalMilliseconds() < answerMs
+        event = Wait(answerMs - deadline.TotalMilliseconds(), port)
+        if type(event) = "roUrlEvent"
+            key = event.GetSourceIdentity().ToStr()
+            if asked[key] <> invalid then answers[asked[key].url] = server(event)
+            if firstFound(urls, answers, false) <> invalid then exit while
+        end if
+    end while
+    ' Out of time, an address that hasn't answered counts as not a server.
+    found = firstFound(urls, answers, true)
+    if found = invalid
+        m.top.result = { error: "No Kivo server answered at that address." }
+    else
+        m.top.result = found
+    end if
+end sub
+
+' A server's info from its answer to GET /api/v1/server, or false when it isn't one.
+function server(event as object) as dynamic
+    if event.GetResponseCode() <> 200 then return false
+    info = ParseJson(event.GetString())
+    if info = invalid or info.id = invalid or info.version = invalid then return false
+    return info
+end function
+
+' The first URL, in the order best first, that answered as a server, once
+' every better one has answered, or [settled] when no more answers come;
+' invalid until then.
+function firstFound(urls as object, answers as object, settled as boolean) as dynamic
+    for each url in urls
+        answer = answers[url]
+        if answer = invalid and not settled then return invalid
+        if type(answer) = "roAssociativeArray" then return { url: url, server: answer }
+    end for
+    return invalid
+end function

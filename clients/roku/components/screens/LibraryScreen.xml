@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A library's grid, as the Android TV app's: its sections (its titles,
+     then Collections when it has any), the count line, which opens Sort,
+     Filter and A-Z for its
+     titles, over a grid that reads a page at a time around the focus.
+     params is { id, name, kind }. -->
+<component name="LibraryScreen" extends="KivoScreen">
+  <children>
+    <Label id="heading" translation="[96, 48]" width="1300" />
+    <ButtonGroup id="bar" translation="[96, 120]" layoutDirection="horiz" itemSpacings="[16]" minWidth="200" />
+    <Label id="status" translation="[96, 260]" width="1700" wrap="true" />
+    <MarkupGrid id="grid" translation="[96, 230]" itemComponentName="PosterItem"
+      numColumns="6" numRows="2" itemSize="[240, 440]" itemSpacing="[24, 32]"
+      vertFocusAnimationStyle="floatingFocus" />
+    <StateView id="state" translation="[96, 260]" visible="false" />
+    <Label id="problem" translation="[96, 1000]" width="1700" />
+    <MenuPanel id="menu" visible="false" />
+    <WorkMenu id="cardMenu" />
+  </children>
+</component>

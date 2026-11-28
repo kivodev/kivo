@@ -1,0 +1,47 @@
+' A typed server address, read as the other apps read it (the core's
+' addressCandidates and its tests).
+namespace tests
+
+    @suite("server address")
+    class AddressTests extends rooibos.BaseTestSuite
+
+        @describe("an address with its scheme")
+
+        @it("is that URL alone, plain HTTP on 8484 when it names no port")
+        sub _()
+            m.assertEqual(Kivo.addressCandidates("https://kivo.example.com/"), ["https://kivo.example.com"])
+            m.assertEqual(Kivo.addressCandidates("http://192.168.1.20"), ["http://192.168.1.20:8484"])
+            m.assertEqual(Kivo.addressCandidates("http://nas:9000/kivo"), ["http://nas:9000/kivo"])
+        end sub
+
+        @describe("an address without its scheme")
+
+        @it("tries HTTPS first, then plain HTTP on 8484 and on 80")
+        sub _()
+            m.assertEqual(Kivo.addressCandidates(" kivo.example.com "), ["https://kivo.example.com", "http://kivo.example.com:8484", "http://kivo.example.com"])
+        end sub
+
+        @it("keeps the port it names, over HTTPS then HTTP")
+        sub _()
+            m.assertEqual(Kivo.addressCandidates("nas:8484"), ["https://nas:8484", "http://nas:8484"])
+            m.assertEqual(Kivo.addressCandidates("[fd00::2]:8484"), ["https://[fd00::2]:8484", "http://[fd00::2]:8484"])
+        end sub
+
+        @it("keeps a base path")
+        sub _()
+            m.assertEqual(Kivo.addressCandidates("example.com/kivo"), ["https://example.com/kivo", "http://example.com:8484/kivo", "http://example.com/kivo"])
+        end sub
+
+        @describe("versions")
+
+        @it("compares semantic versions by major, minor and patch")
+        sub _()
+            m.assertTrue(Kivo.isOlder("0.3.0", "0.4.0"))
+            m.assertTrue(Kivo.isOlder("0.3.9", "0.10.0"))
+            m.assertFalse(Kivo.isOlder("0.4.0", "0.3.1-dev+56c0018d"))
+            m.assertFalse(Kivo.isOlder("0.3.0", "0.3.0"))
+        end sub
+
+    end class
+
+end namespace

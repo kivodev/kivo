@@ -18,6 +18,8 @@ OPENAPI_GENERATOR_VERSION := 7.26.0
 OPENAPI_GENERATOR_SHA256  := 1760050094997b9cc790cc1350be095f15da8c08a996b184d3eadc4ccda5e35e
 OPENAPI_GENERATOR         := bin/openapi-generator-cli-$(OPENAPI_GENERATOR_VERSION).jar
 KOTLIN_API                := ../clients/api
+# The Roku app's API operations and types, which go generate writes (internal/api/internal/brsgen).
+ROKU_API                  := ../clients/roku/source/generated/api.bs ../clients/roku/source/generated/types.bs
 # A release build is given its version, as in make build VERSION=0.4.0. Any
 # other reports the patch after the latest release as a dev build, with its
 # commit: 0.3.1-dev+56c0018d (internal/version).
@@ -113,8 +115,11 @@ ceilings-clients:
 	@$(call ceiling,app player timers,$(APP_PLAYER_TIMERS_MAX),$(call app_lines,$(APP_TIMERS),$(APP_PLAYERS)))
 	@$(call ceiling,app formats,$(APP_FORMATS_MAX),$(call app_lines,$(APP_FORMATS),$(APP_SOURCES)))
 
-# Sorted, since dupl's count depends on the order of the files.
-GO_SOURCES    = $(sort $(shell grep -rL --include='*.go' --exclude='*_test.go' '^// Code generated' $(GO_FILES)))
+# Sorted, since dupl's count depends on the order of the files. The code
+# generators go:generate runs, main packages under internal, don't ship, so
+# the counts leave them out.
+GO_TOOLS      = $(shell grep -rl --include='*.go' '^package main$$' internal)
+GO_SOURCES    = $(sort $(filter-out $(GO_TOOLS),$(shell grep -rL --include='*.go' --exclude='*_test.go' '^// Code generated' $(GO_FILES))))
 WEB_EXCLUDED := **/*.test.ts,**/*.test.tsx,**/src/test/**,**/src/api/mocks/**,**/src/api/schema.d.ts,**/src/i18n/locales/**
 KNIP_COUNT    := let n = 0; for (const f of JSON.parse(require("fs").readFileSync(0)).issues) for (const [k, v] of Object.entries(f)) if (k !== "file") n += Object.keys(v).length; console.log(n)
 APP_SOURCES   := $(wildcard ../clients/android/*/src/main) ../clients/apple/Kivo ../clients/apple/KivoUI
@@ -180,8 +185,8 @@ fmt:
 
 # Untracked files count too: a schema added to the spec is a new Kotlin file.
 check-generated: generate
-	@git diff --exit-code -- . $(KOTLIN_API) && test -z "$$(git ls-files --others --exclude-standard -- . $(KOTLIN_API))" || \
-		{ git ls-files --others --exclude-standard -- . $(KOTLIN_API); echo "generated files are stale: run make generate"; exit 1; }
+	@git diff --exit-code -- . $(KOTLIN_API) $(ROKU_API) && test -z "$$(git ls-files --others --exclude-standard -- . $(KOTLIN_API) $(ROKU_API))" || \
+		{ git ls-files --others --exclude-standard -- . $(KOTLIN_API) $(ROKU_API); echo "generated files are stale: run make generate"; exit 1; }
 
 # The web client (Node 22): Biome with the layering rules, the React hooks
 # lint and the raw-style lint, then tsc, Vitest, a check that the generated

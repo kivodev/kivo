@@ -1,0 +1,700 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/states.bs"
+import "pkg:/source/shared/tracks.bs"
+import "pkg:/source/shared/ui.bs"
+
+' A work's page, as the Android TV app's detail page: a movie or video, a
+' series (a season opens its series on it) or an episode.
+
+sub init()
+    m.backdrop = m.top.FindNode("backdrop")
+    m.eyebrow = m.top.FindNode("eyebrow")
+    m.title = m.top.FindNode("title")
+    m.details = m.top.FindNode("details")
+    m.nextLine = m.top.FindNode("nextLine")
+    m.overview = m.top.FindNode("overview")
+    m.buttons = m.top.FindNode("buttons")
+    m.missing = m.top.FindNode("missing")
+    m.state = m.top.FindNode("state")
+    m.problem = m.top.FindNode("problem")
+    m.rows = m.top.FindNode("rows")
+    KivoUi.style(m.top.FindNode("hint"), KivoTokens.TextSize.sm, KivoTokens.Color.textSubtle)
+    m.top.FindNode("scrim").color = KivoTokens.Color.scrim
+    KivoUi.style(m.eyebrow, KivoTokens.TextSize.base, KivoTokens.Color.textMuted, true)
+    KivoUi.style(m.title, KivoTokens.TextSize.title, KivoTokens.Color.text, true)
+    KivoUi.style(m.details, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.nextLine, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.overview, KivoTokens.TextSize.base, KivoTokens.Color.text)
+    KivoUi.style(m.missing, KivoTokens.TextSize.base, KivoTokens.Color.warning, true)
+    KivoUi.style(m.problem, KivoTokens.TextSize.sm, KivoTokens.Color.danger)
+    font = CreateObject("roSGNode", "Font")
+    font.uri = "font:BoldSystemFontFile"
+    font.size = KivoTokens.TextSize.base
+    m.rows.rowLabelFont = font
+    m.rows.rowLabelColor = KivoTokens.Color.text
+    m.buttons.ObserveField("buttonSelected", "onButton")
+    m.rows.ObserveField("rowItemSelected", "onCard")
+    m.state.ObserveField("action", "onState")
+    m.seasons = invalid
+    m.menu = m.top.FindNode("menu")
+    m.menu.ObserveField("chosen", "onMenuChosen")
+    m.menu.ObserveField("closed", "onMenuClosed")
+    m.cardMenu = m.top.FindNode("cardMenu")
+    m.cardMenu.ObserveField("navigate", "onCardMenuNavigate")
+    m.cardMenu.ObserveField("changed", "load")
+    m.cardMenu.ObserveField("problem", "onCardMenuProblem")
+    m.cardMenu.ObserveField("closed", "onCardMenuClosed")
+    ' A movie's picks, which apply to its next play only.
+    m.choice = {}
+    m.tasks = {}
+    ' Watchlist, for the page's button: the list every user has.
+    m.myListId = invalid
+    m.tasks.lists = Kivo.send(KivoApi.listLists(), "onLists")
+    m.top.ObserveField("params", "load")
+end sub
+
+sub focus()
+    takeFocus()
+    ' Progress may have moved on while the player showed.
+    if shownWork() <> invalid then load()
+end sub
+
+sub takeFocus()
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.cardMenu.visible
+        m.cardMenu.callFunc("focus")
+    else if m.state.visible and m.state.buttons.Count() > 0
+        m.state.callFunc("focus")
+    else if m.buttons.buttons.Count() > 0
+        m.buttons.SetFocus(true)
+    else if m.rows.visible
+        m.rows.SetFocus(true)
+    else
+        m.top.SetFocus(true)
+    end if
+end sub
+
+sub load()
+    m.problem.text = ""
+    m.tasks.work = Kivo.send(KivoApi.getWork(m.top.params.id), "onWork")
+end sub
+
+sub onLists(event as object)
+    m.tasks.lists = invalid
+    response = event.GetData()
+    answer = KivoApi.listListsAnswer(response)
+    if response.code <> 200 then return
+    for each list in answer.items
+        if list.builtIn = true then m.myListId = list.id
+    end for
+    if shownWork() <> invalid then show(shownWork())
+end sub
+
+sub onWork(event as object)
+    response = event.GetData()
+    answer = KivoApi.getWorkAnswer(response)
+    m.tasks.work = invalid
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        if shownWork() = invalid
+            KivoStates.failed(m.state, response)
+            m.state.callFunc("focus")
+        else
+            m.problem.text = KivoDisplay.problem(response)
+        end if
+        return
+    end if
+    ' A season opens its series on it.
+    if answer.kind = KivoApi.WorkKind.season and answer.season <> invalid and answer.season.seriesId <> invalid
+        m.openSeason = answer.id
+        m.top.params = { id: answer.season.seriesId }
+        return
+    end if
+    KivoStates.clear(m.state)
+    first = shownWork() = invalid
+    m.work = answer
+    show(shownWork())
+    if shownWork().kind = KivoApi.WorkKind.series
+        ' Episodes' progress moves on too, so they're read again each time.
+        m.tasks.children = Kivo.send(KivoApi.listWorkChildren(shownWork().id), "onChildren")
+    else if shownWork().kind = KivoApi.WorkKind.episode and shownWork().episode.seasonId <> invalid
+        ' An episode's page has its season's row of cards, opening on it.
+        task = Kivo.send(KivoApi.listWorkChildren(shownWork().episode.seasonId), "onSeason")
+        task.AddFields({ seasonIndex: 0 })
+        m.seasons = [{ id: shownWork().episode.seasonId, number: shownWork().episode.seasonNumber, episodes: invalid }]
+        m.tasks.season0 = task
+    else
+        showRows()
+    end if
+    if first then takeFocus()
+end sub
+
+' The hero: an episode's series over its title, the title (a movie's with
+' its edition), the details line, Play or Resume with the time, Play from
+' beginning, Audio & Subtitles, Watchlist and Watched; "This file is
+' missing" in Play's place when no version can play. A series' Play is
+' its Next Up, "Play S1 E2", with what it plays under the buttons.
+sub show(work as KivoApi.WorkDetail)
+    m.eyebrow.text = ""
+    if work.episode <> invalid and work.episode.seriesTitle <> invalid then m.eyebrow.text = work.episode.seriesTitle
+    title = work.title
+    if work.movie <> invalid and work.movie.edition <> invalid and work.movie.edition <> "" then title = title + " · " + work.movie.edition
+    m.title.text = title
+    m.details.text = details(work).Join(" · ")
+    m.overview.text = ""
+    if work.overview <> invalid then m.overview.text = work.overview
+    image = work.images.backdrop
+    if work.kind = KivoApi.WorkKind.episode and work.images.still <> invalid then image = work.images.still
+    m.backdrop.uri = Kivo.imageUrl(image, 1920)
+    labels = []
+    m.actions = []
+    m.nextLine.text = ""
+    target = playTarget(work)
+    m.missing.visible = target = invalid and work.kind <> KivoApi.WorkKind.series
+    if target <> invalid
+        if target.positionMs <> invalid and target.positionMs > 0
+            labels.Push("Resume " + KivoUi.clock(target.positionMs))
+            m.actions.Push({ id: target.id, fromStart: false })
+            labels.Push("Play from beginning")
+            m.actions.Push({ id: target.id, fromStart: true })
+        else if target.id <> work.id and target.episode <> invalid
+            labels.Push("Play S" + target.episode.seasonNumber.ToStr() + " E" + target.episode.number.ToStr())
+            m.actions.Push({ id: target.id, fromStart: false })
+        else
+            labels.Push("Play")
+            m.actions.Push({ id: target.id, fromStart: false })
+        end if
+        if target.id <> work.id
+            ' What the button plays: "S3 · E4 · Reload · 30 min left".
+            line = [KivoUi.episodeCode(target.episode), target.title]
+            if target.positionMs <> invalid and target.durationMs <> invalid then line.Push(KivoUi.timeLeft(target.durationMs - target.positionMs))
+            m.nextLine.text = line.Join(" · ")
+        end if
+    end if
+    if target <> invalid and target.id = work.id and picksTracks(work)
+        labels.Push("Audio & Subtitles")
+        m.actions.Push({ tracks: true })
+    end if
+    if m.myListId <> invalid
+        if onMyList(work)
+            labels.Push("Remove from Watchlist")
+        else
+            labels.Push("Add to Watchlist")
+        end if
+        m.actions.Push({ myList: true })
+    end if
+    if played(work)
+        labels.Push("Mark as unwatched")
+    else
+        labels.Push("Mark as watched")
+    end if
+    m.actions.Push({ played: true })
+    focused = m.buttons.buttonFocused
+    m.buttons.buttons = labels
+    if focused >= 0 and focused < labels.Count() then m.buttons.focusButton = focused
+end sub
+
+function played(work as KivoApi.WorkDetail) as boolean
+    return work.userState <> invalid and work.userState.played = true
+end function
+
+function onMyList(work as KivoApi.WorkDetail) as boolean
+    if m.myListId = invalid or work.listIds = invalid then return false
+    for each id in work.listIds
+        if id = m.myListId then return true
+    end for
+    return false
+end function
+
+' What Play plays: the work itself when its version can play, or a
+' series' Next Up; invalid when nothing plays.
+function playTarget(work as KivoApi.WorkDetail) as dynamic
+    playable = [KivoApi.WorkKind.movie, KivoApi.WorkKind.episode, KivoApi.WorkKind.video, KivoApi.WorkKind.extra]
+    for each kind in playable
+        if work.kind = kind
+            v = KivoTracks.version(work, chosenVersion())
+            if work.available = true and (v = invalid or v.available <> false) then return { id: work.id, positionMs: positionOf(work), episode: work.episode, title: work.title, durationMs: work.durationMs }
+            return invalid
+        end if
+    end for
+    if work.series <> invalid and work.series.nextUp <> invalid
+        n = work.series.nextUp
+        return { id: n.id, positionMs: positionOf(n), episode: n.episode, title: n.title, durationMs: n.durationMs }
+    end if
+    return invalid
+end function
+
+function positionOf(work as KivoApi.WorkSummary) as dynamic
+    if work.userState = invalid then return invalid
+    return work.userState.positionMs
+end function
+
+' The details line, as the Android TV app's: a movie's "2019 · 2h 12m ·
+' ★ 8.1 · PG-13 · Drama, Thriller"; a series' years, seasons, rating and
+' content rating; an episode's "S3 · E4 · Feb 4, 2017 · 44m · ★ 8.5 · TV-14".
+function details(work as KivoApi.WorkDetail) as object
+    parts = []
+    if work.kind = KivoApi.WorkKind.series
+        last = invalid
+        count = invalid
+        if work.series <> invalid
+            last = work.series.lastAirYear
+            count = work.series.seasonCount
+        end if
+        if work.year <> invalid
+            if last <> invalid and last <> work.year
+                parts.Push(work.year.ToStr() + " to " + last.ToStr())
+            else
+                parts.Push(work.year.ToStr())
+            end if
+        end if
+        if count <> invalid then parts.Push(KivoUi.plural(count, "season", "seasons"))
+    else if work.kind = KivoApi.WorkKind.episode
+        if work.episode <> invalid
+            parts.Push(KivoUi.episodeCode(work.episode))
+            if work.episode.airDate <> invalid then parts.Push(KivoUi.date(work.episode.airDate))
+        end if
+        runtime = KivoUi.duration(work.durationMs)
+        if runtime <> "" then parts.Push(runtime)
+    else
+        if work.year <> invalid then parts.Push(work.year.ToStr())
+        runtime = KivoUi.duration(work.durationMs)
+        if runtime <> "" then parts.Push(runtime)
+    end if
+    if work.communityRating <> invalid then parts.Push(KivoUi.rating(work.communityRating))
+    if work.contentRating <> invalid then parts.Push(work.contentRating)
+    if work.kind <> KivoApi.WorkKind.series and work.kind <> KivoApi.WorkKind.episode and work.genres <> invalid and work.genres.Count() > 0
+        genres = []
+        for each genre in work.genres
+            if genres.Count() < 2 then genres.Push(genre)
+        end for
+        parts.Push(genres.Join(", "))
+    end if
+    return parts
+end function
+
+' A series' seasons: each one's episodes, asked at once, shown in order once all have answered.
+sub onChildren(event as object)
+    response = event.GetData()
+    answer = KivoApi.listWorkChildrenAnswer(response)
+    m.tasks.children = invalid
+    if response.code <> 200
+        m.problem.text = KivoDisplay.problem(response)
+        showRows()
+        return
+    end if
+    children = answer.items
+    m.seasons = []
+    for i = 0 to children.Count() - 1
+        number = invalid
+        if children[i].season <> invalid then number = children[i].season.number
+        m.seasons.Push({ id: children[i].id, number: number, title: children[i].title, episodes: invalid })
+        task = Kivo.send(KivoApi.listWorkChildren(children[i].id), "onSeason")
+        task.AddFields({ seasonIndex: i })
+        m.tasks["season" + i.ToStr()] = task
+    end for
+    if children.Count() = 0 then showRows()
+end sub
+
+sub onSeason(event as object)
+    task = event.GetRoSGNode()
+    i = task.seasonIndex
+    m.tasks.Delete("season" + i.ToStr())
+    response = event.GetData()
+    answer = KivoApi.listWorkChildrenAnswer(response)
+    m.seasons[i].episodes = []
+    if response.code = 200 then m.seasons[i].episodes = answer.items
+    for each season in m.seasons
+        if season.episodes = invalid then return
+    end for
+    showRows()
+end sub
+
+' A season's name: "Season 3", or Specials for season 0, with how many episodes it has.
+function seasonTitle(season as object) as string
+    name = "Specials"
+    if season.number <> invalid and season.number > 0 then name = "Season " + season.number.ToStr()
+    if season.number = invalid and season.title <> invalid then name = season.title
+    if season.episodes <> invalid then name = name + "  ·  " + KivoUi.plural(season.episodes.Count(), "episode", "episodes")
+    return name
+end function
+
+' The rows under the hero: a series' seasons' episodes (an episode's
+' own season's), then More like this, Trailers (the trailer files in the
+' work's folder), Cast, Extras and Collections, as on Android TV; rows
+' with nothing in them are left out. The row of episodes opens on Next
+' Up, or on the page's own episode. A reload keeps the focus where it was.
+sub showRows()
+    root = CreateObject("roSGNode", "ContentNode")
+    sizes = []
+    heights = []
+    entry = invalid
+    if m.seasons <> invalid
+        entryId = shownWork().id
+        if shownWork().series <> invalid and shownWork().series.nextUp <> invalid then entryId = shownWork().series.nextUp.id
+        for each season in m.seasons
+            if season.episodes <> invalid and season.episodes.Count() > 0
+                for i = 0 to season.episodes.Count() - 1
+                    if season.episodes[i].id = entryId then entry = [root.GetChildCount(), i]
+                end for
+                if entry = invalid and m.openSeason <> invalid and season.id = m.openSeason then entry = [root.GetChildCount(), 0]
+                addRow(root, sizes, heights, KivoContent.row(seasonTitle(season), season.episodes, true), true)
+            end if
+        end for
+    end if
+    similar = shownWork().similar
+    if similar <> invalid and similar.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("More like this", similar, false), false)
+    trailers = []
+    extras = []
+    if shownWork().extras <> invalid
+        for each extra in shownWork().extras
+            if extra.extra <> invalid and extra.extra.type = KivoApi.ExtraType.trailer
+                trailers.Push(extra)
+            else
+                extras.Push(extra)
+            end if
+        end for
+    end if
+    if trailers.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("Trailers", trailers, true), true)
+    cast = []
+    if shownWork().credits <> invalid
+        for each credit in shownWork().credits
+            if credit.role = "actor" and cast.Count() < 20 then cast.Push({ personId: credit.personId, name: credit.name, photo: credit.photo, caption: credit.character })
+        end for
+    end if
+    if cast.Count() > 0 then addRow(root, sizes, heights, KivoContent.people("Cast", cast), false)
+    if extras.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("Extras", extras, true), true)
+    if shownWork().collections <> invalid and shownWork().collections.Count() > 0 then addRow(root, sizes, heights, KivoContent.collections("Collections", shownWork().collections), false)
+    if root.GetChildCount() = 0
+        m.rows.visible = false
+        return
+    end if
+    was = m.rows.rowItemFocused
+    m.rows.rowItemSize = sizes
+    m.rows.rowHeights = heights
+    m.rows.content = root
+    m.rows.visible = true
+    if m.rowsShown = true and was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
+        if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
+    else if entry <> invalid
+        m.rows.jumpToRowItem = entry
+    end if
+    m.rowsShown = true
+    if m.buttons.buttons.Count() = 0 and not m.menu.visible then m.rows.SetFocus(true)
+end sub
+
+sub addRow(root as object, sizes as object, heights as object, row as object, landscape as boolean)
+    size = KivoContent.rowSize(landscape)
+    root.AppendChild(row)
+    sizes.Push(size.item)
+    heights.Push(size.height)
+end sub
+
+sub onButton()
+    action = m.actions[m.buttons.buttonSelected]
+    if action.tracks = true
+        openMenu()
+        return
+    end if
+    if action.myList = true
+        if onMyList(shownWork())
+            m.tasks.mark = Kivo.send(KivoApi.removeListWork(m.myListId, shownWork().id), "onMarked")
+        else
+            m.tasks.mark = Kivo.send(KivoApi.addListWork(m.myListId, { workId: shownWork().id }), "onMarked")
+        end if
+        return
+    end if
+    if action.played = true
+        ' A series asks before marking its unplayed episodes watched.
+        count = 0
+        if shownWork().series <> invalid and shownWork().series.unplayedCount <> invalid then count = shownWork().series.unplayedCount
+        if not played(shownWork()) and shownWork().kind = KivoApi.WorkKind.series and count > 1
+            m.menuPage = "confirm"
+            m.menu.title = "Mark " + count.ToStr() + " episodes as watched?"
+            m.menu.note = ""
+            m.menu.checkedId = ""
+            m.menu.items = [{ id: "no", label: "Cancel" }, { id: "yes", label: "Mark as watched" }]
+            m.menu.visible = true
+            m.menu.callFunc("focus")
+            return
+        end if
+        setPlayed(not played(shownWork()))
+        return
+    end if
+    params = { id: action.id, fromStart: action.fromStart }
+    if action.id = shownWork().id then params.Append(m.choice)
+    m.top.navigate = { screen: "PlayerScreen", params: params }
+end sub
+
+sub setPlayed(value as boolean)
+    m.tasks.mark = Kivo.send(KivoApi.updateWorkUserState(shownWork().id, { played: value }), "onMarked")
+end sub
+
+sub onMarked(event as object)
+    m.tasks.mark = invalid
+    response = event.GetData()
+    if response.code >= 300
+        m.problem.text = KivoDisplay.problem(response)
+        return
+    end if
+    load()
+end sub
+
+function picksTracks(work as KivoApi.WorkDetail) as boolean
+    v = KivoTracks.version(work, chosenVersion())
+    if v = invalid then return false
+    return KivoTracks.tracksOf(v, "audio").Count() > 1 or KivoTracks.tracksOf(v, "subtitle").Count() > 0 or work.versions.Count() > 1
+end function
+
+' Whether a pick here is remembered for the series rather than for the next play.
+function remembers() as boolean
+    return shownWork().remembersTracks = true
+end function
+
+function chosenVersion() as string
+    if m.choice.versionId <> invalid then return m.choice.versionId
+    return ""
+end function
+
+' The menu's first page: each choice with the track a play starts with now.
+sub openMenu()
+    m.moreFrom = "page"
+    v = KivoTracks.version(shownWork(), chosenVersion())
+    items = []
+    if KivoTracks.tracksOf(v, "audio").Count() > 0
+        items.Push({ id: "audio", label: "Audio: " + KivoTracks.name(v, startsWith(v, "audio")) })
+    end if
+    subtitle = KivoTracks.name(v, startsWith(v, "subtitle"))
+    if subtitle = "" then subtitle = "Off"
+    items.Push({ id: "subtitle", label: "Subtitles: " + subtitle })
+    if shownWork().versions.Count() > 1 then items.Push({ id: "version", label: "Version: " + v.name })
+    showMenu("menu", "Audio & Subtitles", items, "")
+end sub
+
+' The track of [kind] a play of version [v] starts with: the pick made
+' here for a movie, else the server's (which follows the series' choice).
+function startsWith(v as object, kind as string) as dynamic
+    key = kind + "TrackId"
+    if not remembers() and m.choice[key] <> invalid then return m.choice[key]
+    return v[key]
+end function
+
+sub showMenu(page as string, title as string, items as object, checked as string)
+    m.menuPage = page
+    m.menu.title = title
+    m.menu.note = ""
+    if page <> "version" and remembers()
+        if shownWork().tracksRemembered = true
+            m.menu.note = "Remembered for this show"
+        else
+            m.menu.note = "A pick here is kept for the whole show."
+        end if
+    end if
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub onMenuChosen()
+    id = m.menu.chosen
+    page = m.menuPage
+    if page = "more" or page = "confirm"
+        onMoreChosen(id)
+        return
+    end if
+    v = KivoTracks.version(shownWork(), chosenVersion())
+    if page = "menu"
+        if id = "version"
+            showMenu("version", "Version", KivoTracks.versionItems(shownWork()), v.id)
+        else
+            showMenu(id, menuTitle(id), KivoTracks.items(v, id, automaticOf(v, id)), checkedOf(v, id))
+        end if
+        return
+    end if
+    if page = "version"
+        ' A version change resets the picks: tracks belong to one version.
+        m.choice = { versionId: id }
+        openMenu()
+        return
+    end if
+    key = page + "TrackId"
+    if remembers()
+        body = {}
+        body[key] = id
+        m.tasks.tracks = Kivo.send(KivoApi.updateWorkTracks(shownWork().id, body), "onTracks")
+        return
+    end if
+    if id = KivoTracks.automatic
+        m.choice.Delete(key)
+    else
+        m.choice[key] = id
+    end if
+    openMenu()
+end sub
+
+function menuTitle(kind as string) as string
+    if kind = "audio" then return "Audio"
+    return "Subtitles"
+end function
+
+' The track "Default" stands for: without the series' choice for an
+' episode that remembers tracks, else the server's own.
+function automaticOf(v as object, kind as string) as dynamic
+    if kind = "audio"
+        if remembers() then return v.defaultAudioTrackId
+        return v.audioTrackId
+    end if
+    if remembers() then return v.defaultSubtitleTrackId
+    return v.subtitleTrackId
+end function
+
+' The item checked: the series' choice or this page's pick, else Default.
+function checkedOf(v as object, kind as string) as string
+    key = kind + "TrackId"
+    if remembers()
+        if shownWork().tracksRemembered <> true then return KivoTracks.automatic
+        if v[key] = invalid then return KivoTracks.off
+        return v[key]
+    end if
+    if m.choice[key] <> invalid then return m.choice[key]
+    return KivoTracks.automatic
+end function
+
+' The series' choice changed; the page shows the tracks plays start with now.
+sub onTracks(event as object)
+    response = event.GetData()
+    answer = KivoApi.updateWorkTracksAnswer(response)
+    m.tasks.tracks = invalid
+    if response.code = 200
+        m.work = answer
+        show(shownWork())
+    else if response.code = 409
+        ' Remembering was turned off meanwhile: the pick is for the next play.
+        m.work.remembersTracks = false
+    end if
+    openMenu()
+end sub
+
+sub onMenuClosed()
+    if m.menuPage <> "menu" and m.menuPage <> "more" and m.menuPage <> "confirm"
+        openMenu()
+        return
+    end if
+    closeMenu()
+end sub
+
+sub closeMenu()
+    m.menu.visible = false
+    m.menuPage = invalid
+    if m.buttons.buttons.Count() > 0
+        m.buttons.SetFocus(true)
+    else
+        takeFocus()
+    end if
+end sub
+
+' More, on *: for the card in focus in the rows, else for the page's
+' work, mark it watched or unwatched; for the page's work, add it to or
+' take it off a list; an episode card's series.
+
+' The page's * on the hero, as its ⋯: Go to series for an episode, and
+' Go to library. On a card in the rows, the card's menu.
+sub openMore()
+    if m.rows.IsInFocusChain() and m.rows.content <> invalid
+        at = m.rows.rowItemFocused
+        card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+        if card = invalid or card.workId = "" then return
+        where = {}
+        if shownWork().kind = KivoApi.WorkKind.series then where.seriesId = shownWork().id
+        m.cardMenu.callFunc("open", card, where)
+        return
+    end if
+    items = []
+    if shownWork().episode <> invalid and shownWork().episode.seriesId <> invalid then items.Push({ id: "series", label: "Go to series" })
+    if shownWork().libraryId <> invalid then items.Push({ id: "library", label: "Go to library" })
+    if items.Count() = 0 then return
+    m.menuPage = "more"
+    m.menu.title = shownWork().title
+    m.menu.note = ""
+    m.menu.checkedId = ""
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub onMoreChosen(id as string)
+    page = m.menuPage
+    closeMenu()
+    if page = "confirm"
+        if id = "yes" then setPlayed(true)
+    else if id = "series"
+        m.top.navigate = { screen: "DetailScreen", params: { id: shownWork().episode.seriesId } }
+    else if id = "library"
+        m.top.navigate = { screen: "LibraryScreen", params: { id: shownWork().libraryId } }
+    end if
+end sub
+
+sub onCard()
+    at = m.rows.rowItemSelected
+    m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
+end sub
+
+sub onState()
+    if m.state.action = "retry"
+        load()
+    else if m.state.action = "changeServer"
+        m.top.navigate = { changeServer: true }
+    end if
+end sub
+
+sub onCardMenuNavigate()
+    m.top.navigate = m.cardMenu.navigate
+end sub
+
+sub onCardMenuProblem()
+    m.problem.text = m.cardMenu.problem
+end sub
+
+sub onCardMenuClosed()
+    if m.rows.visible then m.rows.SetFocus(true)
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "options" and shownWork() <> invalid and not m.menu.visible and not m.cardMenu.visible
+        openMore()
+        return true
+    end if
+    ' The remote's Play plays the focused episode card, as on Android TV.
+    if key = "play" and m.rows.IsInFocusChain() and m.rows.content <> invalid
+        at = m.rows.rowItemFocused
+        card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+        if card <> invalid and card.workId <> "" and card.kind = KivoApi.WorkKind.episode and card.available
+            m.top.navigate = { screen: "PlayerScreen", params: { id: card.workId } }
+            return true
+        end if
+    end if
+    if key = "down" and m.buttons.IsInFocusChain() and m.rows.visible
+        m.rows.SetFocus(true)
+        return true
+    end if
+    if key = "up" and m.rows.IsInFocusChain() and m.buttons.buttons.Count() > 0
+        m.buttons.SetFocus(true)
+        return true
+    end if
+    return false
+end function
+
+' The title this page shows, as its type.
+function shownWork() as KivoApi.WorkDetail
+    return m.work
+end function

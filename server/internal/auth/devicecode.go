@@ -217,6 +217,29 @@ func (s *Service) withWaitingCode(p Caller, code string, ip netip.Addr, fn func(
 	return nil
 }
 
+// DeviceCodeWaiting reports whether code waits for an answer, for the
+// waiting device's QR code. A code that's unknown, expired or answered
+// returns ErrCodeNotFound and counts against the address as a wrong poll
+// does, so it can't be used to find codes faster than polling can.
+func (s *Service) DeviceCodeWaiting(code string, ip netip.Addr) error {
+	try, d := s.throttle.begin(ip, pollKey)
+	if d > 0 {
+		return &ThrottledError{RetryAfter: d}
+	}
+	defer try.end()
+	now := time.Now()
+	dc := s.codes
+	dc.mu.Lock()
+	pl := dc.byCode[code]
+	ok := pl != nil && now.Before(pl.expires) && !pl.answered()
+	dc.mu.Unlock()
+	if !ok {
+		try.fail()
+		return ErrCodeNotFound
+	}
+	return nil
+}
+
 // PollDeviceCode is the device asking whether its code was answered. It
 // returns false while the code waits. Once approved, it returns a session
 // for the approving user, one time only, replacing that user's session on

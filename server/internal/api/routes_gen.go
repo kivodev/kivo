@@ -26,6 +26,7 @@ var specRoutes = map[string]route{
 	"GET /api/v1/collections/{id}":                            {method: "GET", path: "/api/v1/collections/{id}", op: "getCollection", level: viewer},
 	"GET /api/v1/content-ratings":                             {method: "GET", path: "/api/v1/content-ratings", op: "listContentRatings", level: viewer},
 	"GET /api/v1/device-codes/{code}":                         {method: "GET", path: "/api/v1/device-codes/{code}", op: "getDeviceCode", level: signedIn},
+	"GET /api/v1/device-codes/{code}/qr":                      {method: "GET", path: "/api/v1/device-codes/{code}/qr", op: "getDeviceCodeQr", level: public},
 	"GET /api/v1/directories":                                 {method: "GET", path: "/api/v1/directories", op: "listDirectories", level: admin},
 	"GET /api/v1/downloads":                                   {method: "GET", path: "/api/v1/downloads", op: "listDownloads", level: viewer},
 	"GET /api/v1/downloads/{id}":                              {method: "GET", path: "/api/v1/downloads/{id}", op: "getDownload", level: viewer},

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A screen of MainScene's stack: it's given params, asks for another
+     screen through navigate (MainScene.bs), and focus() gives the focus
+     back to what it last had when it shows again. -->
+<component name="KivoScreen" extends="Group">
+  <interface>
+    <field id="params" type="assocarray" />
+    <field id="navigate" type="assocarray" alwaysNotify="true" />
+    <function name="focus" />
+  </interface>
+</component>

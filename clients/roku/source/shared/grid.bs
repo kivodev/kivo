@@ -1,0 +1,133 @@
+import "pkg:/source/shared/ui.bs"
+
+' A library's grid as the other apps have it (the core's GridQuery and
+' SmartLists.gridQuery): its tabs, its sorts, and its filters as a work
+' query's rules.
+namespace KivoGrid
+
+    ' Works a grid asks for at a time.
+    const pageSize = 60
+
+    ' The sections a library of [kind] has: its titles, named by what they
+    ' are (Movies, Shows, Videos), then Collections when it has any.
+    function tabs(kind as string, hasCollections as boolean) as object
+        names = { movies: "Movies", shows: "Shows" }
+        name = names[kind]
+        if name = invalid then name = "Videos"
+        out = [{ id: "titles", label: name }]
+        if hasCollections then out.Push({ id: "collections", label: "Collections" })
+        return out
+    end function
+
+    ' The sorts a library of [kind] offers, each a work query's sort field,
+    ' as the core's sortsOf lists them.
+    function sorts(kind as string) as object
+        out = [{ id: "title", label: "Title" }, { id: "addedAt", label: "Date added" }]
+        if kind = "shows" then out.Push({ id: "lastEpisodeAddedAt", label: "Last episode added" })
+        out.Append([{ id: "releaseDate", label: "Release date" }, { id: "rating", label: "Rating" }, { id: "runtimeMs", label: "Runtime" }, { id: "lastPlayedAt", label: "Last played" }])
+        return out
+    end function
+
+    ' A sort in a word or two, for the count line: "A–Z", "Recently added".
+    function sortShort(sort as string) as string
+        words = { title: "A–Z", addedAt: "Recently added", lastEpisodeAddedAt: "Last episode added", releaseDate: "Newest", rating: "Top rated", runtimeMs: "Shortest", lastPlayedAt: "Recently played" }
+        if words[sort] <> invalid then return words[sort]
+        return "A–Z"
+    end function
+
+    ' "237 movies", "5 collections": how many of what the section lists.
+    function countNoun(count as integer, section as string, kind as string) as string
+        if section = "collections" then return KivoUi.plural(count, "collection", "collections")
+        if kind = "movies" then return KivoUi.plural(count, "movie", "movies")
+        if kind = "shows" then return KivoUi.plural(count, "show", "shows")
+        return KivoUi.plural(count, "video", "videos")
+    end function
+
+    ' "No unwatched movies" for the watch status alone, else "No movies match these filters".
+    function emptyFiltered(filters as object, kind as string) as string
+        nouns = { movies: "movies", shows: "shows" }
+        noun = nouns[kind]
+        if noun = invalid then noun = "videos"
+        onlyPlayed = filters.played <> "" and filters.genres.Count() = 0 and filters.decade = "" and filters.contentRatings.Count() = 0 and filters.resolutions.Count() = 0 and filters.dynamicRanges.Count() = 0
+        if onlyPlayed
+            states = { unplayed: "unwatched", inProgress: "in-progress", played: "watched" }
+            return "No " + states[filters.played] + " " + noun
+        end if
+        return "No " + noun + " match these filters"
+    end function
+
+    ' The work kind a library of [kind] lists.
+    function workKind(kind as string) as string
+        if kind = "movies" then return "movie"
+        if kind = "shows" then return "series"
+        return "video"
+    end function
+
+    ' The filters a grid has: played, genres, decade, content ratings,
+    ' resolutions and dynamic ranges.
+    function emptyFilters() as object
+        return { played: "", genres: [], decade: "", contentRatings: [], resolutions: [], dynamicRanges: [] }
+    end function
+
+    function filtered(filters as object) as boolean
+        return filters.played <> "" or filters.genres.Count() > 0 or filters.decade <> "" or filters.contentRatings.Count() > 0 or filters.resolutions.Count() > 0 or filters.dynamicRanges.Count() > 0
+    end function
+
+    ' The work query request of a library's grid: its kind, sorted by
+    ' [sort], with the filters as rules all of which must match.
+    function request(libraryId as string, kind as string, sort as string, filters as object, offset as integer) as object
+        rules = []
+        if filters.played <> "" then rules.Push({ field: "playState", op: "anyOf", values: [filters.played] })
+        if filters.genres.Count() > 0 then rules.Push({ field: "genre", op: "anyOf", values: filters.genres })
+        if filters.decade <> ""
+            first = filters.decade.ToInt()
+            rules.Push({ field: "year", op: "between", values: [first.ToStr(), (first + 9).ToStr()] })
+        end if
+        if filters.contentRatings.Count() > 0 then rules.Push({ field: "contentRating", op: "anyOf", values: filters.contentRatings })
+        if filters.resolutions.Count() > 0 then rules.Push({ field: "resolution", op: "anyOf", values: filters.resolutions })
+        if filters.dynamicRanges.Count() > 0 then rules.Push({ field: "dynamicRange", op: "anyOf", values: filters.dynamicRanges })
+        query = { kinds: [KivoGrid.workKind(kind)], sort: [{ field: sort }] }
+        if rules.Count() > 0 then query.where = { match: "all", rules: rules }
+        body = { query: query, library: libraryId, limit: KivoGrid.pageSize }
+        if offset > 0 then body.offset = offset
+        return body
+    end function
+
+    ' The decades of [years] (release years as strings), newest first, as "1990".
+    function decades(years as object) as object
+        seen = {}
+        out = []
+        for each year in years
+            decade = (Int(year.ToInt() / 10) * 10).ToStr()
+            if year.ToInt() > 0 and seen[decade] = invalid
+                seen[decade] = true
+                out.Push(decade)
+            end if
+        end for
+        out.Sort("r")
+        return out
+    end function
+
+    ' [list] with [value] taken out when it's there, else put in.
+    function toggled(list as object, value as string) as object
+        out = []
+        found = false
+        for each item in list
+            if item = value
+                found = true
+            else
+                out.Push(item)
+            end if
+        end for
+        if not found then out.Push(value)
+        return out
+    end function
+
+    function contains(list as object, value as string) as boolean
+        for each item in list
+            if item = value then return true
+        end for
+        return false
+    end function
+
+end namespace

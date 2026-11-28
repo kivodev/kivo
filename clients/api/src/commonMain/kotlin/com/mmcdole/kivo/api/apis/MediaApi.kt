@@ -232,7 +232,7 @@ open class MediaApi : ApiClient {
 
     /**
      * Get preview thumbnails
-     * Start from &#x60;PlayStarted.previews.url&#x60;, the manifest; it names the sheets. Also answers &#x60;HEAD&#x60;.
+     * Start from &#x60;PlayStarted.previews.url&#x60;, the manifest; it names the sheets. Beside the manifest, &#x60;previews.bif&#x60; is every frame as one BIF file, each a JPEG, as a Roku&#39;s video player shows them while seeking. Also answers &#x60;HEAD&#x60;. 
      * @param id The play&#39;s ID; it is the credential for this route.
      * @param name An opaque name produced by the server; clients only follow URLs, never build names.
      * @return PreviewManifest

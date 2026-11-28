@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A work's page, as the Android TV app's: its backdrop (an episode's
+     still), an episode's series over the title, the details line, Play
+     or Resume with the time, Play from beginning, Audio & Subtitles,
+     Watchlist and Watched, then rows: a series' episodes by season (an
+     episode's season's), More like this, Trailers, Cast, Extras and
+     Collections. * opens Go to series and Go to library, or a card's menu
+     in the rows. -->
+<component name="DetailScreen" extends="KivoScreen">
+  <children>
+    <Poster id="backdrop" width="1920" height="1080" loadDisplayMode="scaleToZoom" />
+    <Rectangle id="scrim" width="1920" height="1080" />
+    <Label id="eyebrow" translation="[96, 56]" width="1300" />
+    <Label id="title" translation="[96, 96]" width="1300" wrap="true" maxLines="2" />
+    <Label id="details" translation="[96, 230]" width="1500" />
+    <Label id="overview" translation="[96, 290]" width="1100" wrap="true" maxLines="4" />
+    <Label id="missing" translation="[96, 436]" text="This file is missing" visible="false" />
+    <ButtonGroup id="buttons" translation="[96, 480]" layoutDirection="horiz" itemSpacings="[24]" minWidth="240" />
+    <Label id="nextLine" translation="[96, 556]" width="1700" />
+    <Label id="hint" translation="[1500, 1020]" width="324" horizAlign="right" text="* More" />
+    <StateView id="state" translation="[96, 300]" visible="false" />
+    <Label id="problem" translation="[96, 590]" width="1700" />
+    <RowList id="rows" translation="[96, 620]" itemComponentName="PosterItem"
+      itemSize="[1824, 470]" numRows="2" rowItemSize="[[480, 350]]" rowHeights="[420]"
+      rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]" showRowLabel="[true]" rowLabelOffset="[[0, 12]]"
+      rowFocusAnimationStyle="floatingFocus" visible="false" />
+    <MenuPanel id="menu" visible="false" />
+    <WorkMenu id="cardMenu" />
+  </children>
+</component>

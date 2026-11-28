@@ -404,6 +404,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/device-codes/{code}/qr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The code the device shows, in any case, with or without spaces or a hyphen. */
+                code: components["parameters"]["UserCode"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get device code QR
+         * @description A PNG QR code of the code's `linkUrl`, dark on light with a quiet
+         *     zone, for a device that can show an image but can't draw one. It
+         *     encodes only the server's own link for a waiting code. A code that
+         *     is unknown, expired or already answered is `404`, and counts as a
+         *     wrong poll does.
+         */
+        get: operations["getDeviceCodeQr"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/device-codes/{code}/approve": {
         parameters: {
             query?: never;
@@ -2336,7 +2363,10 @@ export interface paths {
         };
         /**
          * Get preview thumbnails
-         * @description Start from `PlayStarted.previews.url`, the manifest; it names the sheets. Also answers `HEAD`.
+         * @description Start from `PlayStarted.previews.url`, the manifest; it names the
+         *     sheets. Beside the manifest, `previews.bif` is every frame as one
+         *     BIF file, each a JPEG, as a Roku's video player shows them while
+         *     seeking. Also answers `HEAD`.
          */
         get: operations["getPlayPreview"];
         put?: never;
@@ -3257,7 +3287,7 @@ export interface components {
          * @description What a client runs on.
          * @enum {string}
          */
-        ClientPlatform: "androidTv" | "appleTv" | "iPhone" | "iPad" | "androidPhone" | "browser" | "cast" | "tizen" | "webos";
+        ClientPlatform: "androidTv" | "appleTv" | "iPhone" | "iPad" | "androidPhone" | "browser" | "cast" | "tizen" | "webos" | "roku";
         /**
          * @description An app and the device it runs on, as its identity headers name
          *     them (Client identity, above).
@@ -6562,6 +6592,33 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    getDeviceCodeQr: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The code the device shows, in any case, with or without spaces or a hyphen. */
+                code: components["parameters"]["UserCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The QR code. */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            default: components["responses"]["Error"];
+        };
+    };
     approveDeviceCode: {
         parameters: {
             query?: never;
@@ -9091,7 +9148,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The manifest or a sheet. */
+            /** @description The manifest, a sheet, or the BIF file. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -9099,6 +9156,7 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PreviewManifest"];
                     "image/webp": string;
+                    "application/octet-stream": string;
                 };
             };
             404: components["responses"]["NotFound"];

@@ -1,0 +1,625 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.sections = m.top.FindNode("sections")
+    m.list = m.top.FindNode("list")
+    m.status = m.top.FindNode("status")
+    m.menu = m.top.FindNode("menu")
+    m.paneTitle = m.top.FindNode("paneTitle")
+    m.scope = m.top.FindNode("scope")
+    m.top.FindNode("line").color = KivoTokens.Color.border
+    KivoUi.style(m.top.FindNode("heading"), KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
+    KivoUi.style(m.paneTitle, KivoTokens.TextSize.lg, KivoTokens.Color.text, true)
+    KivoUi.style(m.scope, KivoTokens.TextSize.sm, KivoTokens.Color.textMuted)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.danger)
+    for each list in [m.sections, m.list]
+        list.color = KivoTokens.Color.text
+        list.focusedColor = KivoTokens.Color.onAccent
+        list.focusBitmapBlendColor = KivoTokens.Color.accent
+    end for
+    m.groups = [
+        { id: "account", label: "Account" },
+        { id: "playback", label: "Playback" },
+        { id: "audio", label: "Audio" },
+        { id: "subtitles", label: "Subtitles" },
+        { id: "quality", label: "Quality" },
+        { id: "home", label: "Home" },
+        { id: "libraries", label: "Libraries" },
+        { id: "about", label: "About" }
+    ]
+    root = CreateObject("roSGNode", "ContentNode")
+    for each group in m.groups
+        root.CreateChild("ContentNode").title = group.label
+    end for
+    m.sections.content = root
+    m.sections.ObserveField("itemFocused", "onSection")
+    m.sections.ObserveField("itemSelected", "enterPane")
+    m.list.ObserveField("itemSelected", "onSetting")
+    m.menu.ObserveField("chosen", "onChosen")
+    m.menu.ObserveField("closed", "closeMenu")
+    m.tasks = {}
+    m.ladder = []
+    m.user = invalid
+    m.homeRows = invalid
+    m.libraries = invalid
+    m.group = "account"
+    m.tasks.user = Kivo.send(KivoApi.getCurrentUser(), "onUser")
+    m.tasks.server = Kivo.send(KivoApi.getServer(), "onServer")
+    show()
+end sub
+
+sub focus()
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.inPane = true
+        m.list.SetFocus(true)
+    else
+        m.sections.SetFocus(true)
+    end if
+end sub
+
+sub onSection()
+    m.group = m.groups[m.sections.itemFocused].id
+    m.status.text = ""
+    if m.group = "home" and homeRowList() = invalid then m.tasks.home = Kivo.send(KivoApi.listHomeRows(), "onHomeRows")
+    if m.group = "libraries" and libraryList() = invalid then m.tasks.libraries = Kivo.send(KivoApi.listLibraries(), "onLibraries")
+    show()
+end sub
+
+sub enterPane()
+    if m.paneItems.Count() = 0 then return
+    m.inPane = true
+    m.list.SetFocus(true)
+end sub
+
+sub onUser(event as object)
+    m.tasks.user = invalid
+    response = event.GetData()
+    answer = KivoApi.getCurrentUserAnswer(response)
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code = 200
+        m.user = answer
+    else
+        m.status.text = "Couldn't load this. " + KivoDisplay.problem(response)
+    end if
+    show()
+end sub
+
+sub onServer(event as object)
+    m.tasks.server = invalid
+    response = event.GetData()
+    answer = KivoApi.getServerAnswer(response)
+    if response.code = 200
+        m.server = answer
+        if answer.qualityLadder <> invalid then m.ladder = answer.qualityLadder
+    end if
+    show()
+end sub
+
+sub onHomeRows(event as object)
+    m.tasks.home = invalid
+    response = event.GetData()
+    answer = KivoApi.listHomeRowsAnswer(response)
+    if response.code = 200 then m.homeRows = answer.items
+    if response.code <> 200 then m.status.text = "Couldn't load this. " + KivoDisplay.problem(response)
+    show()
+end sub
+
+sub onLibraries(event as object)
+    m.tasks.libraries = invalid
+    response = event.GetData()
+    answer = KivoApi.listLibrariesAnswer(response)
+    if response.code = 200 then m.libraries = answer.items
+    if response.code <> 200 then m.status.text = "Couldn't load this. " + KivoDisplay.problem(response)
+    show()
+end sub
+
+' The focused section's settings, each with what it's set to.
+sub show()
+    items = []
+    scope = ""
+    g = m.group
+    pb = invalid
+    if currentUser() <> invalid then pb = currentUser().playback
+    serverName = m.global.server
+    if serverInfo() <> invalid and serverInfo().name <> invalid then serverName = serverInfo().name
+    if g = "account"
+        if currentUser() <> invalid then items.Push({ id: "who", label: "Signed in to " + serverName + " · " + currentUser().username })
+        items.Push({ id: "switchAccount", label: "Switch account" })
+        items.Push({ id: "changeServer", label: "Change server" })
+        items.Push({ id: "linkDevice", label: "Link a device" })
+        items.Push({ id: "signOut", label: "Sign out" })
+    else if g = "playback" and pb <> invalid
+        scope = "All your devices"
+        items.Push({ id: "autoplayNext", label: "Play next episode automatically: " + onOff(pb.autoplayNext) })
+        items.Push({ id: "rememberTracks", label: "Remember choices per show: " + onOff(pb.rememberTracks) })
+    else if g = "audio" and pb <> invalid
+        scope = "All your devices, then this TV"
+        items.Push({ id: "audioLanguage", label: "Audio language: " + languageLabel(pb.audioLanguage, "Original language") })
+        items.Push({ id: "dialogueBoost", label: "Dialogue boost (this TV): " + onOff(Kivo.dialogueBoost()) })
+    else if g = "subtitles" and pb <> invalid
+        scope = "All your devices"
+        items.Push({ id: "subtitleMode", label: "Show subtitles: " + modeLabel(pb.subtitleMode) })
+        ' The language only while subtitles show.
+        if pb.subtitleMode <> "none" then items.Push({ id: "subtitleLanguage", label: "Subtitle language: " + languageLabel(pb.subtitleLanguage, "Server default") })
+    else if g = "quality"
+        scope = "This TV"
+        qualities = Kivo.qualities()
+        items.Push({ id: "localQuality", label: "Local network quality: " + KivoDisplay.quality(qualities.localQuality, ladderRungs()) })
+        remote = "Remote quality: " + KivoDisplay.quality(qualities.remoteQuality, ladderRungs())
+        if currentUser() <> invalid and currentUser().limits <> invalid and currentUser().limits.remoteQualityCapBps <> invalid then remote = remote + "  (Limited to " + KivoDisplay.bitrate(currentUser().limits.remoteQualityCapBps) + " by the server.)"
+        items.Push({ id: "remoteQuality", label: remote })
+    else if g = "home" and homeRowList() <> invalid
+        scope = "All your devices"
+        for each row in tvHomeRows()
+            mark = "Off"
+            if row.shown then mark = "On"
+            items.Push({ id: "row:" + row.id, label: homeRowName(row) + ": " + mark })
+        end for
+        items.Push({ id: "resetHome", label: "Reset Home" })
+    else if g = "libraries" and libraryList() <> invalid
+        scope = "All your devices"
+        shown = KivoContent.tvLibraries(libraryList())
+        if shown.Count() = 0 then items.Push({ id: "none", label: "No libraries yet" })
+        for each lib in shown
+            mark = "Not pinned"
+            if lib.pinned = true then mark = "Pinned"
+            items.Push({ id: "lib:" + lib.id, label: lib.name + ": " + mark })
+        end for
+    else if g = "about"
+        items.Push({ id: "fact", label: "App version: " + CreateObject("roAppInfo").GetVersion() })
+        if serverInfo() <> invalid then items.Push({ id: "fact", label: "Server version: " + serverInfo().version })
+        items.Push({ id: "fact", label: "Server: " + serverAddress() })
+        items.Push({ id: "credits", label: "Credits" })
+    end if
+    m.paneItems = items
+    m.paneTitle.text = m.groups[sectionIndex()].label
+    m.scope.text = scope
+    root = CreateObject("roSGNode", "ContentNode")
+    for each item in items
+        root.CreateChild("ContentNode").title = item.label
+    end for
+    focused = m.list.itemFocused
+    m.list.content = root
+    if focused >= 0 and focused < items.Count() then m.list.jumpToItem = focused
+end sub
+
+function sectionIndex() as integer
+    for i = 0 to m.groups.Count() - 1
+        if m.groups[i].id = m.group then return i
+    end for
+    return 0
+end function
+
+' The server's address, for a browser to manage it: its public URL when it has one, else its first local URL.
+function serverAddress() as string
+    if serverInfo() <> invalid
+        if serverInfo().publicUrl <> invalid and serverInfo().publicUrl <> "" then return serverInfo().publicUrl
+        if serverInfo().localUrls <> invalid and serverInfo().localUrls.Count() > 0 then return serverInfo().localUrls[0]
+    end if
+    return m.global.server
+end function
+
+' The Home rows the TV lists: the kinds Home shows here, and no audiobooks library's.
+function tvHomeRows() as object
+    out = []
+    books = {}
+    if libraryList() <> invalid
+        for each lib in libraryList()
+            if lib.kind = KivoApi.LibraryKind.audiobooks then books[lib.id] = true
+        end for
+    end if
+    for each row in homeRowList()
+        known = row.kind = KivoApi.HomeRowKind.continueWatching or row.kind = KivoApi.HomeRowKind.recentlyAdded or row.kind = KivoApi.HomeRowKind.list
+        if known and (row.library = invalid or books[row.library.id] <> true) then out.Push(row)
+    end for
+    return out
+end function
+
+function homeRowName(row as KivoApi.HomeRowInfo) as string
+    if row.kind = KivoApi.HomeRowKind.continueWatching then return "Continue Watching"
+    if row.kind = KivoApi.HomeRowKind.list and row.list <> invalid then return row.list.name
+    if row.library <> invalid then return "Recently Added in " + row.library.name
+    return "Recently Added"
+end function
+
+function onOff(value as dynamic) as string
+    if value = true then return "On"
+    return "Off"
+end function
+
+function modeLabel(mode as string) as string
+    labels = { none: "Off", forced: "Only forced", smart: "Foreign audio only", always: "Always" }
+    if labels[mode] <> invalid then return labels[mode]
+    return mode
+end function
+
+function languageLabel(tag as dynamic, fallback as string) as string
+    if tag = invalid or tag = "" then return fallback
+    return KivoDisplay.languageName(tag)
+end function
+
+sub onSetting()
+    item = m.paneItems[m.list.itemSelected]
+    id = item.id
+    m.setting = id
+    if id = "localQuality" or id = "remoteQuality"
+        items = [{ id: "auto", label: KivoDisplay.quality(invalid, ladderRungs()) }, { id: "original", label: KivoDisplay.quality({ mode: "original" }, ladderRungs()) }]
+        for each rung in ladderRungs()
+            items.Push({ id: rung.bitrateBps.ToStr(), label: KivoDisplay.quality({ mode: "limit", maxBitrateBps: rung.bitrateBps }, ladderRungs()) })
+        end for
+        pick = Kivo.qualities()[id]
+        checked = "auto"
+        if pick <> invalid and pick.mode = KivoApi.QualityMode.original then checked = "original"
+        if pick <> invalid and pick.mode = KivoApi.QualityMode.limit then checked = pick.maxBitrateBps.ToStr()
+        title = "Local network quality"
+        if id = "remoteQuality" then title = "Remote quality"
+        showMenu(title, items, checked)
+    else if id = "audioLanguage" or id = "subtitleLanguage"
+        first = "Original language"
+        if id = "subtitleLanguage" then first = "Server default"
+        items = [{ id: " ", label: first }]
+        items.Append(KivoDisplay.preferenceLanguages())
+        checked = currentUser().playback[id]
+        if checked = invalid or checked = "" then checked = " "
+        title = "Audio language"
+        if id = "subtitleLanguage" then title = "Subtitle language"
+        showMenu(title, items, checked)
+    else if id = "subtitleMode"
+        items = []
+        for each mode in ["none", "forced", "smart", "always"]
+            items.Push({ id: mode, label: modeLabel(mode) })
+        end for
+        showMenu("Show subtitles", items, currentUser().playback.subtitleMode)
+    else if id = "rememberTracks" or id = "autoplayNext"
+        body = {}
+        body[id] = currentUser().playback[id] <> true
+        save(body)
+    else if id = "dialogueBoost"
+        Kivo.saveDialogueBoost(not Kivo.dialogueBoost())
+        show()
+    else if id = "switchAccount"
+        confirm("Switch account?", "Signs out this TV and shows a sign-in code.", "Switch account")
+    else if id = "changeServer"
+        confirm("Change server?", "Signs out this TV and looks for servers.", "Change server")
+    else if id = "signOut"
+        confirm("Sign out this TV?", "", "Sign out")
+    else if id = "linkDevice"
+        askCode("")
+    else if id = "resetHome"
+        m.tasks.home = Kivo.send(KivoApi.resetHomeRows(), "onHomeRows")
+    else if id.Left(4) = "row:"
+        rowMenu(id.Mid(4))
+    else if id.Left(4) = "lib:"
+        libraryMenu(id.Mid(4))
+    else if id = "credits"
+        showMenu("Credits", [{ id: "fact", label: "This product uses the TMDB API but is not endorsed or certified by TMDB." }, { id: "fact", label: "Audiobook metadata from Audnexus" }, { id: "fact", label: "Transcoding by jellyfin-ffmpeg (GPL)" }], "")
+    end if
+end sub
+
+' Asks before something that can't be taken back: Cancel, focused first, or [action].
+sub confirm(title as string, help as string, action as string)
+    m.confirming = m.setting
+    m.menu.title = title
+    m.menu.note = help
+    m.menu.checkedId = ""
+    m.menu.items = [{ id: "cancel", label: "Cancel" }, { id: "confirm", label: action }]
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+' A Home row's choices: shown or not, and Move up and Move down past the
+' next one the TV lists.
+sub rowMenu(rowId as string)
+    m.confirming = invalid
+    m.rowId = rowId
+    for each row in tvHomeRows()
+        if row.id = rowId then m.rowShown = row.shown
+    end for
+    toggle = "Show"
+    if m.rowShown then toggle = "Hide"
+    m.menu.title = "Home"
+    m.menu.note = ""
+    m.menu.checkedId = ""
+    m.menu.items = [{ id: "toggle", label: toggle }, { id: "up", label: "Move up" }, { id: "down", label: "Move down" }]
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub libraryMenu(libraryId as string)
+    m.confirming = invalid
+    m.libraryId = libraryId
+    pinned = false
+    for each lib in libraryList()
+        if lib.id = libraryId then pinned = lib.pinned = true
+    end for
+    toggle = "Pin"
+    if pinned then toggle = "Unpin"
+    m.menu.title = "Libraries"
+    m.menu.note = ""
+    m.menu.checkedId = ""
+    m.menu.items = [{ id: "toggle", label: toggle }, { id: "up", label: "Move up" }, { id: "down", label: "Move down" }]
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub showMenu(title as string, items as object, checked as string)
+    m.confirming = invalid
+    m.menu.title = title
+    m.menu.note = ""
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub closeMenu()
+    m.menu.visible = false
+    if m.inPane = true
+        m.list.SetFocus(true)
+    else
+        m.sections.SetFocus(true)
+    end if
+end sub
+
+sub onChosen()
+    id = m.menu.chosen
+    setting = m.setting
+    if id = "fact" then return
+    closeMenu()
+    if m.confirming = "link"
+        m.confirming = invalid
+        m.linkAllowed = id = "allow"
+        if m.linkAllowed
+            m.tasks.link = Kivo.send(KivoApi.approveDeviceCode(m.linkCode), "onLinked")
+        else
+            m.tasks.link = Kivo.send(KivoApi.denyDeviceCode(m.linkCode), "onLinked")
+        end if
+        return
+    end if
+    if m.confirming <> invalid
+        what = m.confirming
+        m.confirming = invalid
+        if id <> "confirm" then return
+        if what = "switchAccount" or what = "signOut"
+            m.tasks.signOut = Kivo.send(KivoApi.deleteCurrentSession(), "onSignedOut")
+        else if what = "changeServer"
+            m.top.navigate = { changeServer: true }
+        end if
+        return
+    end if
+    if setting = "localQuality" or setting = "remoteQuality"
+        quality = { mode: "limit", maxBitrateBps: id.ToInt() }
+        if id = "auto" or id = "original" then quality = { mode: id }
+        Kivo.saveQuality(setting, quality)
+        show()
+    else if setting = "audioLanguage" or setting = "subtitleLanguage"
+        body = {}
+        body[setting] = id.Trim()
+        save(body)
+    else if setting = "subtitleMode"
+        save({ subtitleMode: id })
+    else if setting.Left(4) = "row:"
+        changeRow(id)
+    else if setting.Left(4) = "lib:"
+        changeLibrary(id)
+    end if
+end sub
+
+' Shows or hides a Home row, or moves it past the next row the TV lists.
+sub changeRow(action as string)
+    all = homeRowList()
+    shownIds = []
+    for each row in tvHomeRows()
+        shownIds.Push(row.id)
+    end for
+    order = []
+    for each row in all
+        order.Push({ id: row.id, shown: row.shown })
+    end for
+    i = indexOf(order, m.rowId)
+    if action = "toggle"
+        order[i].shown = not order[i].shown
+    else
+        j = neighbour(order, i, shownIds, action)
+        if j < 0 then return
+        swap = order[i]
+        order[i] = order[j]
+        order[j] = swap
+    end if
+    m.tasks.home = Kivo.send(KivoApi.updateHomeRows({ items: order }), "onHomeRows")
+end sub
+
+' Pins or unpins a library, or moves it past the next one the TV lists,
+' the others, such as audiobooks libraries, staying where they are.
+sub changeLibrary(action as string)
+    shownIds = []
+    for each lib in KivoContent.tvLibraries(libraryList())
+        shownIds.Push(lib.id)
+    end for
+    order = []
+    for each lib in libraryList()
+        order.Push({ id: lib.id, pinned: lib.pinned = true })
+    end for
+    i = indexOf(order, m.libraryId)
+    if action = "toggle"
+        order[i].pinned = not order[i].pinned
+    else
+        j = neighbour(order, i, shownIds, action)
+        if j < 0 then return
+        swap = order[i]
+        order[i] = order[j]
+        order[j] = swap
+    end if
+    m.tasks.libraryOrder = Kivo.send(KivoApi.updateCurrentUser({ libraries: order }), "onLibrariesSaved")
+end sub
+
+function indexOf(items as object, id as string) as integer
+    for i = 0 to items.Count() - 1
+        if items[i].id = id then return i
+    end for
+    return -1
+end function
+
+' The index of the next item up or down from [i] that the TV lists, or -1.
+function neighbour(items as object, i as integer, listed as object, direction as string) as integer
+    stepBy = 1
+    if direction = "up" then stepBy = -1
+    j = i + stepBy
+    while j >= 0 and j < items.Count()
+        for each id in listed
+            if id = items[j].id then return j
+        end for
+        j = j + stepBy
+    end while
+    return -1
+end function
+
+sub onLibrariesSaved(event as object)
+    m.tasks.libraryOrder = invalid
+    response = event.GetData()
+    if response.code <> 200
+        m.status.text = "Couldn't save. " + KivoDisplay.problem(response)
+        return
+    end if
+    m.tasks.libraries = Kivo.send(KivoApi.listLibraries(), "onLibraries")
+end sub
+
+' Link a device: the code another device shows, typed in capitals.
+sub askCode(note as string)
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Link a device"
+    dialog.message = ["Enter the code the other device shows."]
+    if note <> "" then dialog.message = [note]
+    dialog.buttons = ["Continue", "Cancel"]
+    dialog.ObserveField("buttonSelected", "onCodeButton")
+    m.codeDialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onCodeButton()
+    dialog = m.codeDialog
+    if dialog.buttonSelected <> 0
+        dialog.close = true
+        return
+    end if
+    code = UCase(dialog.text.Trim()).Replace("-", "").Replace(" ", "")
+    dialog.close = true
+    if code = "" then return
+    m.linkCode = code
+    m.tasks.link = Kivo.send(KivoApi.getDeviceCode(code), "onPending")
+end sub
+
+' "Allow Living Room to sign in as anna?" with what it runs on, whether
+' it's on the home network and when it asked, a warning when it isn't,
+' and Don't allow, focused first, beside Allow.
+sub onPending(event as object)
+    m.tasks.link = invalid
+    response = event.GetData()
+    answer = KivoApi.getDeviceCodeAnswer(response)
+    if response.code <> 200
+        note = KivoDisplay.problem(response)
+        if response.code = 404 or response.code = 410 then note = "That code didn't work. Check the other device for a new one."
+        askCode(note)
+        return
+    end if
+    device = answer
+    lines = []
+    where = "Not on your home network"
+    if device.nearby = true then where = "On your home network"
+    lines.Push(where)
+    if device.nearby <> true then lines.Push("This device isn't on your home network. Only allow it if it's yours and you started signing in on it just now.")
+    username = ""
+    if currentUser() <> invalid then username = currentUser().username
+    m.linkName = device.name
+    m.confirming = "link"
+    m.setting = "link"
+    m.menu.title = "Allow " + device.name + " to sign in as " + username + "?"
+    m.menu.note = lines.Join(" ")
+    m.menu.checkedId = ""
+    m.menu.items = [{ id: "deny", label: "Don't allow" }, { id: "allow", label: "Allow" }]
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+' Changes the account's playback preferences, which every app follows.
+sub save(playback as object)
+    m.tasks.save = Kivo.send(KivoApi.updateCurrentUser({ playback: playback }), "onSaved")
+end sub
+
+sub onSaved(event as object)
+    m.tasks.save = invalid
+    response = event.GetData()
+    answer = KivoApi.updateCurrentUserAnswer(response)
+    if response.code = 200
+        m.user = answer
+        m.status.text = ""
+    else
+        m.status.text = "Couldn't save. " + KivoDisplay.problem(response)
+    end if
+    show()
+end sub
+
+sub onLinked(event as object)
+    m.tasks.link = invalid
+    response = event.GetData()
+    if response.code < 300
+        if m.linkAllowed then m.status.text = m.linkName + " is signed in"
+        if not m.linkAllowed then m.status.text = m.linkName + " wasn't signed in"
+    else
+        m.status.text = KivoDisplay.problem(response)
+    end if
+end sub
+
+' Signed out on the server, or not, the device forgets its session.
+sub onSignedOut()
+    m.tasks.signOut = invalid
+    m.top.navigate = { signedOut: true }
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if (key = "right") and m.sections.HasFocus()
+        enterPane()
+        return true
+    end if
+    if (key = "left" or key = "back") and m.list.HasFocus()
+        m.inPane = false
+        m.sections.SetFocus(true)
+        return true
+    end if
+    return false
+end function
+
+' The signed-in user, as its type.
+function currentUser() as KivoApi.CurrentUser
+    return m.user
+end function
+
+' The server's info, as its type.
+function serverInfo() as KivoApi.ServerInfo
+    return m.server
+end function
+
+' The server's libraries, as its type.
+function libraryList() as KivoApi.Library[]
+    return m.libraries
+end function
+
+' Home's rows, for showing, hiding and ordering, as its type.
+function homeRowList() as KivoApi.HomeRowInfo[]
+    return m.homeRows
+end function
+
+' The server's quality rungs, as its type.
+function ladderRungs() as KivoApi.QualityRung[]
+    return m.ladder
+end function

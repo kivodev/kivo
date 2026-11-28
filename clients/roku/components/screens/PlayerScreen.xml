@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Plays a work in the Video node, telling the server where it is every
+     ten seconds and when it stops. * opens Playback Settings, as the
+     Android TV app's: audio, subtitles, the dialogue boost, quality,
+     version, stream info and an episode's previous and next ones. Skip
+     shows in a marker, and up next near an episode's end. -->
+<component name="PlayerScreen" extends="KivoScreen">
+  <children>
+    <Video id="video" width="1920" height="1080" enableUI="true" notificationInterval="1" />
+    <Rectangle id="infoGround" translation="[64, 48]" width="820" height="200" visible="false" />
+    <Label id="info" translation="[96, 72]" width="760" wrap="true" visible="false" />
+    <Label id="status" translation="[160, 480]" width="1600" wrap="true" horizAlign="center" />
+    <Button id="skip" translation="[1440, 880]" minWidth="400" visible="false" showFocusFootprint="true" />
+    <Group id="upNext" translation="[1136, 600]" visible="false">
+      <Rectangle id="upNextGround" width="720" height="416" />
+      <Poster id="upNextStill" translation="[32, 32]" width="256" height="144" loadDisplayMode="scaleToZoom" />
+      <Label id="upNextHeading" translation="[312, 32]" width="376" />
+      <Label id="upNextTitle" translation="[312, 76]" width="376" wrap="true" maxLines="2" />
+      <Label id="upNextCountdown" translation="[312, 150]" width="376" />
+      <ButtonGroup id="upNextButtons" translation="[32, 220]" layoutDirection="horiz" itemSpacings="[24]" minWidth="300" />
+    </Group>
+    <Rectangle id="failureGround" width="1920" height="1080" visible="false" />
+    <StateView id="failure" translation="[360, 400]" textWidth="1200" visible="false" />
+    <MenuPanel id="menu" visible="false" />
+    <Timer id="heartbeat" duration="10" repeat="true" />
+    <Timer id="second" duration="1" repeat="true" />
+  </children>
+</component>

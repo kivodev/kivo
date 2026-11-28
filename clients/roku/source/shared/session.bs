@@ -1,0 +1,147 @@
+import "pkg:/source/generated/api.bs"
+
+namespace Kivo
+
+    const registrySection = "kivo"
+
+    ' What the app keeps on the device: the server's address and ID, the
+    ' session's token and the app's own client ID.
+    function saved() as object
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        clientId = section.Read("clientId")
+        if clientId = ""
+            clientId = CreateObject("roDeviceInfo").GetRandomUUID()
+            section.Write("clientId", clientId)
+            section.Flush()
+        end if
+        return {
+            server: section.Read("server"),
+            serverId: section.Read("serverId"),
+            token: section.Read("token"),
+            clientId: clientId
+        }
+    end function
+
+    ' Keeps the server the app talks to, forgetting the session of another one.
+    sub saveServer(url as string, id as string)
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        if section.Read("serverId") <> id then section.Delete("token")
+        section.Write("server", url)
+        section.Write("serverId", id)
+        section.Flush()
+    end sub
+
+    ' Keeps the session's token, or forgets it when empty.
+    sub saveToken(token as string)
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        if token = ""
+            section.Delete("token")
+        else
+            section.Write("token", token)
+        end if
+        section.Flush()
+    end sub
+
+    ' This device's quality picks (QualityRequest), at home and away, for a
+    ' play's settings; absent ones are Auto.
+    function qualities() as object
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        out = {}
+        for each key in ["localQuality", "remoteQuality"]
+            saved = section.Read(key)
+            if saved <> ""
+                quality = ParseJson(saved)
+                if quality <> invalid then out[key] = quality
+            end if
+        end for
+        return out
+    end function
+
+    ' Keeps a quality pick (QualityRequest) for [key], localQuality or remoteQuality.
+    sub saveQuality(key as string, quality as object)
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        section.Write(key, FormatJson(quality))
+        section.Flush()
+    end sub
+
+    ' Whether plays boost dialogue, kept on this device, as on Android TV.
+    function dialogueBoost() as boolean
+        return CreateObject("roRegistrySection", Kivo.registrySection).Read("dialogueBoost") = "true"
+    end function
+
+    sub saveDialogueBoost(on as boolean)
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        value = "false"
+        if on then value = "true"
+        section.Write("dialogueBoost", value)
+        section.Flush()
+    end sub
+
+    ' What this device last chose in a library's grid (its tab, sort and
+    ' filters), to open it on next time; invalid for none.
+    function savedGrid(libraryId as string) as dynamic
+        saved = CreateObject("roRegistrySection", "kivo-grids").Read(libraryId)
+        if saved = "" then return invalid
+        return ParseJson(saved)
+    end function
+
+    sub saveGrid(libraryId as string, grid as object)
+        section = CreateObject("roRegistrySection", "kivo-grids")
+        section.Write(libraryId, FormatJson(grid))
+        section.Flush()
+    end sub
+
+    ' The last search typed while this server is open, which Search opens on.
+    function lastSearch() as string
+        if m.global.lastSearch = invalid then return ""
+        return m.global.lastSearch
+    end function
+
+    ' The identity headers every request carries (Client identity in the
+    ' contract). The manifest's major, minor and build versions are the
+    ' release's semantic version.
+    function identityHeaders() as object
+        device = CreateObject("roDeviceInfo")
+        os = device.GetOSVersion()
+        return {
+            "Kivo-App": "kivo-roku",
+            "Kivo-App-Version": CreateObject("roAppInfo").GetVersion(),
+            "Kivo-Platform": KivoApi.ClientPlatform.roku,
+            "Kivo-OS-Version": os.major + "." + os.minor,
+            "Kivo-Device-Model": device.GetModel()
+        }
+    end function
+
+    ' Whether semantic version [a] is older than [b], by major, minor and patch.
+    function isOlder(a as string, b as string) as boolean
+        x = a.Split("+")[0].Split("-")[0].Split(".")
+        y = b.Split("+")[0].Split("-")[0].Split(".")
+        for i = 0 to 2
+            p = 0
+            q = 0
+            if i < x.Count() then p = x[i].ToInt()
+            if i < y.Count() then q = y[i].ToInt()
+            if p <> q then return p < q
+        end for
+        return false
+    end function
+
+    ' Sends a request (a KivoApi function's) on its own task, which calls the
+    ' calling component's [callback] with its response field. The caller
+    ' keeps the task until it answers.
+    function send(request as object, callback as string, base = "" as string) as object
+        task = CreateObject("roSGNode", "ApiTask")
+        task.base = base
+        task.request = request
+        task.ObserveField("response", callback)
+        task.control = "RUN"
+        return task
+    end function
+
+    ' The URL of an image (an ImageRef) at about [width] pixels; empty without one.
+    function imageUrl(image as dynamic, width as integer) as string
+        if image = invalid or image.id = invalid then return ""
+        return KivoApi.getImageUrl(m.global.server, image.id, { width: width })
+    end function
+
+end namespace

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- The app's scene: a stack of screens, Back returning to the one under
+     the top. A screen asks for another by setting its navigate field
+     (see MainScene.bs). -->
+<component name="MainScene" extends="Scene">
+  <children>
+    <Rectangle id="ground" width="1920" height="1080" />
+    <Group id="stack" />
+  </children>
+</component>
