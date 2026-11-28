@@ -4,15 +4,16 @@ import SwiftUI
 
 /// A book's square cover, rounded, or a book on the placeholder colour without one.
 struct BookCover: View {
-    let work: WorkDetail?
+    let poster: ImageRef?
+    var title = ""
     let size: CGFloat
     var radius: CGFloat = 6
     @Environment(\.kivoPalette) private var palette
 
     var body: some View {
         Group {
-            if let poster = work?.images.poster {
-                ArtworkImage(poster, title: work?.title ?? "", pointWidth: size)
+            if let poster {
+                ArtworkImage(poster, title: title, pointWidth: size)
             } else {
                 ZStack {
                     palette.placeholder

@@ -71,6 +71,11 @@ final class ServerModel {
         if session.unreachable.value.boolValue { navigation.tab = .downloads }
         // Casting hands over to and from the player from the start.
         _ = player
+        book.videoPlaying = { [weak self] in self?.player.model != nil }
+        // The book left loaded comes back paused, from the server or its download.
+        if !cast.active {
+            book.restore { id in !session.unreachable.value.boolValue || readyDownload(of: id) != nil }
+        }
         reloadLibraries()
         listsTask = Task { [weak self, session] in
             for await load in session.library.lists() {
@@ -154,8 +159,9 @@ final class ServerModel {
     }
 
     /// Plays a book in the book player, from where the user left it or from [positionMs], such as a chapter's start.
-    func listen(_ workId: String, at positionMs: Int64? = nil) {
-        book.play(workId, at: positionMs)
+    /// The page's [title] and [poster] show in the player while the book opens.
+    func listen(_ workId: String, at positionMs: Int64? = nil, title: String? = nil, poster: ImageRef? = nil) {
+        book.play(workId, at: positionMs, title: title, poster: poster)
     }
 
     /// Asks the server what it is again, as Try again does on a server the app doesn't work with.

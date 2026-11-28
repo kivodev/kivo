@@ -16,6 +16,9 @@ class FakeEngine : PlayerEngine {
     var unloads = 0
     val seeks = mutableListOf<Long>()
 
+    /** Whether a seek moves [positionMs] at once; false while the test holds seeks in flight. */
+    var seeksLand = true
+
     /** How the controller asked each subtitle shown, in order. */
     val subtitles = mutableListOf<TrackShow>()
 
@@ -49,7 +52,7 @@ class FakeEngine : PlayerEngine {
 
     override fun seek(positionMs: Long) {
         seeks += positionMs
-        this.positionMs = positionMs
+        if (seeksLand) this.positionMs = positionMs
     }
 
     override fun showSubtitle(show: TrackShow) {

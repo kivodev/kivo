@@ -1,5 +1,7 @@
 package com.mmcdole.kivo.core.downloads
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.mmcdole.kivo.api.ProblemException
 import com.mmcdole.kivo.api.models.UserStateUpdate
 import com.mmcdole.kivo.api.result
@@ -13,6 +15,9 @@ import com.mmcdole.kivo.core.downloads.db.Download as Row
  * it's newer than what it has.
  */
 internal class ProgressOutbox(private val q: DownloadsQueries, private val now: () -> Long) {
+    /** One send at a time: a second one starting meanwhile sends what the first left. */
+    private val sending = Mutex()
+
     /** Records where offline play of [row] on [versionId] is, in the outbox and on the download. */
     fun record(row: Row, versionId: String, positionMs: Long) {
         q.transaction {
@@ -22,7 +27,7 @@ internal class ProgressOutbox(private val q: DownloadsQueries, private val now: 
     }
 
     /** Sends [s] the outbox: each work's latest offline position. */
-    suspend fun send(s: DownloadServer) {
+    suspend fun send(s: DownloadServer) = sending.withLock {
         for (entry in q.outbox(s.connection.serverId).executeAsList()) {
             try {
                 s.connection.works.updateWorkUserState(

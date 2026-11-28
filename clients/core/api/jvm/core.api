@@ -304,8 +304,10 @@ public final class com/mmcdole/kivo/core/books/BookChapters {
 
 public final class com/mmcdole/kivo/core/books/BookPlayerModel {
 	public static final field Companion Lcom/mmcdole/kivo/core/books/BookPlayerModel$Companion;
+	public static final field SLEEP_RESTART_MS J
 	public final fun getLastSleep ()Lcom/mmcdole/kivo/core/books/SleepChoice;
 	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun load (Ljava/lang/String;)V
 	public final fun nextChapter ()V
 	public final fun pause ()V
 	public final fun play (Ljava/lang/String;Ljava/lang/Long;)V
@@ -332,9 +334,10 @@ public final class com/mmcdole/kivo/core/books/BookPlayerModel$Companion {
 
 public final class com/mmcdole/kivo/core/books/BookPlayerState {
 	public fun <init> ()V
-	public fun <init> (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/play/PlayerFailure;)V
-	public synthetic fun <init> (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/play/PlayerFailure;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/books/SleepChoice;Lcom/mmcdole/kivo/core/play/PlayerFailure;)V
+	public synthetic fun <init> (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/books/SleepChoice;Lcom/mmcdole/kivo/core/play/PlayerFailure;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
+	public final fun component10 ()Lcom/mmcdole/kivo/core/play/PlayerFailure;
 	public final fun component2 ()Lcom/mmcdole/kivo/api/models/WorkDetail;
 	public final fun component3 ()Z
 	public final fun component4 ()Lcom/mmcdole/kivo/core/play/PlayerState;
@@ -342,9 +345,9 @@ public final class com/mmcdole/kivo/core/books/BookPlayerState {
 	public final fun component6 ()Lcom/mmcdole/kivo/core/books/BookProgress;
 	public final fun component7 ()D
 	public final fun component8 ()Lcom/mmcdole/kivo/core/books/SleepState;
-	public final fun component9 ()Lcom/mmcdole/kivo/core/play/PlayerFailure;
-	public final fun copy (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/play/PlayerFailure;)Lcom/mmcdole/kivo/core/books/BookPlayerState;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/books/BookPlayerState;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/play/PlayerFailure;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/books/BookPlayerState;
+	public final fun component9 ()Lcom/mmcdole/kivo/core/books/SleepChoice;
+	public final fun copy (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/books/SleepChoice;Lcom/mmcdole/kivo/core/play/PlayerFailure;)Lcom/mmcdole/kivo/core/books/BookPlayerState;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/books/BookPlayerState;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkDetail;ZLcom/mmcdole/kivo/core/play/PlayerState;Lcom/mmcdole/kivo/core/books/BookChapters;Lcom/mmcdole/kivo/core/books/BookProgress;DLcom/mmcdole/kivo/core/books/SleepState;Lcom/mmcdole/kivo/core/books/SleepChoice;Lcom/mmcdole/kivo/core/play/PlayerFailure;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/books/BookPlayerState;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getChapters ()Lcom/mmcdole/kivo/core/books/BookChapters;
 	public final fun getDownloaded ()Z
@@ -353,6 +356,7 @@ public final class com/mmcdole/kivo/core/books/BookPlayerState {
 	public final fun getPlaying ()Z
 	public final fun getProgress ()Lcom/mmcdole/kivo/core/books/BookProgress;
 	public final fun getSleep ()Lcom/mmcdole/kivo/core/books/SleepState;
+	public final fun getSleepRestart ()Lcom/mmcdole/kivo/core/books/SleepChoice;
 	public final fun getSpeed ()D
 	public final fun getWork ()Lcom/mmcdole/kivo/api/models/WorkDetail;
 	public final fun getWorkId ()Ljava/lang/String;
