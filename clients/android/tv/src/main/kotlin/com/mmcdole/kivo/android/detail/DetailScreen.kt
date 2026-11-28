@@ -244,14 +244,16 @@ private fun DetailFrame(backdrop: ImageRef?, content: @Composable () -> Unit) {
         if (backdrop != null) {
             val layers = remember(colors) {
                 listOf(
+                    // Dark under the text on the left, clear on the right where the artwork shows.
                     Brush.horizontalGradient(
-                        0f to colors.bg.copy(alpha = 0.95f),
-                        0.5f to colors.bg.copy(alpha = 0.92f),
-                        0.72f to colors.bg.copy(alpha = 0.75f),
-                        1f to colors.scrimSoft,
+                        0f to colors.bg.copy(alpha = 0.92f),
+                        0.3f to colors.bg.copy(alpha = 0.82f),
+                        0.55f to colors.bg.copy(alpha = 0.45f),
+                        0.8f to colors.bg.copy(alpha = 0.1f),
+                        1f to colors.bg.copy(alpha = 0f),
                     ),
                     // Solid by the foot of the screen, where a season's captions are.
-                    Brush.verticalGradient(0f to colors.bg.copy(alpha = 0f), 0.85f to colors.bg),
+                    Brush.verticalGradient(0.4f to colors.bg.copy(alpha = 0f), 0.9f to colors.bg),
                 )
             }
             Backdrop(backdrop, BackdropWidth, layers, Modifier.underRail())
