@@ -105,10 +105,3 @@ struct WorkActions: View {
         server.player.play(PlayChoice(workId: work.id), fromStart: fromStart, downloadId: server.readyDownload(of: work.id)?.id)
     }
 }
-
-extension WorkSummary {
-    /// Whether it plays straight from a card: a movie, an episode, a video or a book.
-    var playable: Bool {
-        [WorkKind.movie, .episode, .video, .extra, .book].contains(kind) && available
-    }
-}

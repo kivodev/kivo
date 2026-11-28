@@ -583,15 +583,6 @@ struct UpNextRow: View {
     }
 }
 
-/// What up next says while it shows: still watching, waiting, or its countdown.
-func upNextLabel(_ upNext: UpNext) -> String {
-    switch upNext.phase {
-    case .stillWatching: String(localized: "Still watching?")
-    case .waiting: String(localized: "Up next")
-    default: String(localized: "Up next in \(upNext.secondsLeft)")
-    }
-}
-
 /// The panel a bottom-bar button opens, Audio & Subtitles or Playback
 /// settings: a popover from the button in a regular-width window, and a
 /// sheet in a compact one, as on a phone; Audio & Subtitles' is wider, for

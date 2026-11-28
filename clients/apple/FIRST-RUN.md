@@ -1,4 +1,4 @@
-# The iPhone app: building and running it on a Mac
+# The Apple apps: building and running them on a Mac
 
 Linking the Kotlin core and building the Swift app needs a Mac with macOS 15
 or later and Xcode 26 or later.
@@ -12,6 +12,7 @@ sudo xcode-select -s /Applications/Xcode.app
 sudo xcodebuild -license accept
 xcodebuild -runFirstLaunch
 xcodebuild -downloadPlatform iOS
+xcodebuild -downloadPlatform tvOS
 ```
 
 With Homebrew (brew.sh), install JDK 21 and XcodeGen 2.46.0 or later:
@@ -146,3 +147,19 @@ scripts/download-test/server.sh stop
 The other UI tests run against the same server with
 `TEST_RUNNER_KIVO_SERVER=http://127.0.0.1:18490`, the same account, and
 `TEST_RUNNER_KIVO_LIBRARY='Home Videos'`.
+
+## 7. The Apple TV app
+
+The **KivoTV** scheme builds the Apple TV app, with its Top Shelf extension,
+from the same project; run it on an Apple TV simulator as section 4 does.
+Signing it on a device needs the app group `group.<bundle identifier>`,
+which Xcode registers for the team with automatic signing. Its unit tests:
+
+```sh
+xcodebuild -project Kivo.xcodeproj -scheme KivoTV \
+  -destination 'platform=tvOS Simulator,name=Apple TV 4K (4th generation)' \
+  -derivedDataPath build/DerivedData test -only-testing:KivoTVTests
+```
+
+`KivoTVUITests` drives it with the remote against a server, as the
+iPhone's UI tests do; its file names the variables it reads.

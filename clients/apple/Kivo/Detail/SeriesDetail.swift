@@ -210,22 +210,8 @@ struct SeriesDetail: View {
         return ids
     }
 
-    /// "2015 to 2022 · 6 seasons · ★ 8.5 · TV-MA".
     private var details: [String] {
-        var parts: [String] = []
-        if let year = series.year?.intValue {
-            if let last = series.series?.lastAirYear?.intValue, last != year {
-                parts.append(String(localized: "\(String(year)) to \(String(last))"))
-            } else {
-                parts.append(String(year))
-            }
-        }
-        if let count = series.series?.seasonCount?.intValue {
-            parts.append(count == 1 ? String(localized: "1 season") : String(localized: "\(count) seasons"))
-        }
-        if let rating = series.communityRatingText { parts.append(rating) }
-        if let content = series.contentRating { parts.append(content) }
-        return parts
+        DetailWords.seriesDetails(series)
     }
 
     @ViewBuilder private var actions: some View {
@@ -234,8 +220,8 @@ struct SeriesDetail: View {
             ActionRowSkeleton(roundButtons: 2)
                 .frame(maxWidth: .infinity, alignment: wide ? .leading : .center)
         } else if let nextUp = series.series?.nextUp {
-            ActionRow(work: series, page: page, secondary: secondLine(nextUp)) {
-                PlayButton(label: playLabel(nextUp)) {
+            ActionRow(work: series, page: page, secondary: DetailWords.secondLine(nextUp: nextUp)) {
+                PlayButton(label: DetailWords.play(nextUp: nextUp)) {
                     server.player.play(PlayChoice(workId: nextUp.id))
                 }
                 if nextUp.progress != nil {
@@ -247,21 +233,6 @@ struct SeriesDetail: View {
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
         }
-    }
-
-    /// "Play S1 E1", or "Resume 12:03" for one in progress.
-    private func playLabel(_ nextUp: WorkSummary) -> String {
-        if nextUp.progress != nil, let position = nextUp.userState?.positionMs?.int64Value {
-            return String(localized: "Resume \(Display.app.clock(ms: position))")
-        }
-        guard let episode = nextUp.episode else { return String(localized: "Play") }
-        return String(localized: "Play S\(episode.seasonNumber) E\(episode.number)")
-    }
-
-    /// The episode's title and runtime, or the time left in it.
-    private func secondLine(_ nextUp: WorkSummary) -> String {
-        let time = nextUp.timeLeft ?? nextUp.durationMs.map { Display.app.runtime(ms: $0.int64Value) }
-        return [nextUp.title, time].compactMap { $0 }.joined(separator: " · ")
     }
 
     private var seasonMenu: some View {
@@ -427,22 +398,18 @@ struct SeriesDetail: View {
     }
 
     @ViewBuilder private var episodeCount: some View {
-        if let count = season?.season?.episodeCount?.intValue {
-            Text(count == 1 ? String(localized: "1 episode") : String(localized: "\(count) episodes"))
+        if let count = DetailWords.episodeCount(season) {
+            Text(count)
                 .font(.footnote)
                 .foregroundStyle(palette.textMuted)
         }
     }
 
-    /// "S1", or Specials for season 0, or the season's title without a number.
     private func seasonLabel(_ season: WorkSummary) -> String {
-        guard let number = season.season?.number else { return season.title }
-        return number == 0 ? String(localized: "Specials") : String(localized: "S\(number)")
+        DetailWords.seasonLabel(season)
     }
 
-    /// "3 unwatched", or Watched.
     private func seasonState(_ season: WorkSummary) -> String {
-        guard let info = season.season else { return "" }
-        return info.unplayedCount == 0 ? String(localized: "Watched") : String(localized: "\(info.unplayedCount) unwatched")
+        DetailWords.seasonState(season)
     }
 }

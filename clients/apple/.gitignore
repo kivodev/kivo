@@ -4,6 +4,10 @@ Kivo.xcodeproj/*
 Kivo.xcodeproj/xcshareddata/*
 !Kivo.xcodeproj/xcshareddata/xcbaselines/
 Kivo/Info.plist
+KivoTV/Info.plist
+KivoTV/KivoTV.entitlements
+KivoTopShelf/Info.plist
+KivoTopShelf/KivoTopShelf.entitlements
 Frameworks/
 KivoUI/Generated/
 Config/Signing.local.xcconfig

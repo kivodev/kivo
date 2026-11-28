@@ -81,27 +81,3 @@ struct SettingsView: View {
         .padding(.vertical, 4)
     }
 }
-
-/// A change the server refused: why, and how to send it again.
-struct SaveFailure {
-    let message: String
-    let retry: () -> Void
-}
-
-/// A failure in a settings group: what went wrong, in the danger colour, with Retry.
-struct FailureRow: View {
-    let message: String
-    let retry: () -> Void
-    @Environment(\.kivoPalette) private var palette
-
-    var body: some View {
-        HStack {
-            Text(message)
-                .font(.footnote)
-                .foregroundStyle(palette.danger)
-            Spacer()
-            Button(String(localized: "Retry"), action: retry)
-                .buttonStyle(.borderless)
-        }
-    }
-}

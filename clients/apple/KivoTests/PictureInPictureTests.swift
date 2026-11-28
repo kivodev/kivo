@@ -51,7 +51,7 @@ final class PictureInPictureTests: XCTestCase {
     override func setUp() async throws {
         server = try StubServer { Self.answer($0) }
         let address = try await server.start()
-        let core = try KivoClient.forTests(subtitles: AppModel.subtitles, trackSelection: true)
+        let core = try KivoClient.forTests(subtitles: SubtitleOverlayView.shown, trackSelection: true)
         session = try await core.restore(server: SavedServer(id: "pip-test", name: "PiP test", addresses: [address]))
     }
 

@@ -59,6 +59,7 @@ public struct GroupCard: View {
         VStack(alignment: .leading, spacing: KivoTokens.spacing) {
             if look == .person {
                 PersonPhoto(image, name: name, size: width)
+                    .cardLift()
             } else {
                 ArtworkImage(image, title: name, pointWidth: width)
                     .frame(width: width, height: width / style.aspect)
@@ -71,6 +72,7 @@ public struct GroupCard: View {
                     .background(alignment: .top) {
                         if look == .stack { stack }
                     }
+                    .cardLift()
             }
             switch caption {
             case .twoLines:

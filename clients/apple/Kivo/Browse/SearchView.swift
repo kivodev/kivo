@@ -4,36 +4,19 @@ import SwiftUI
 
 /// Search, below the tab's field: the people who match in a
 /// row, then a row of results for each kind, always in the same order, a
-/// kind with no matches having no row, then the collections that match. It
-/// runs once typing pauses for about 350 ms; meanwhile the last results
-/// stay, dimmed. Coming back from a result finds them as they were, without
-/// searching again.
+/// kind with no matches having no row, then the collections that match
+/// (SearchModel). While a search runs the last results stay, dimmed.
 struct SearchView: View {
     @Binding var query: String
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
     @Environment(\.openWork) private var openWork
     @Environment(\.wide) private var wide
-    @State private var results: SearchResults?
-    @State private var searched = ""
-    @State private var running = false
-    /// Why the search failed, as a problem code.
-    @State private var failed: RequestProblem?
-
-    private struct KindRow {
-        let kinds: Set<WorkKind>
-        let title: String
-    }
-
-    private static let kinds = [
-        KindRow(kinds: [.movie], title: String(localized: "Movies")),
-        KindRow(kinds: [.series], title: String(localized: "Shows")),
-        KindRow(kinds: [.episode], title: String(localized: "Episodes")),
-        KindRow(kinds: [.video, .extra], title: String(localized: "Other videos")),
-        KindRow(kinds: [.book], title: String(localized: "Books")),
-    ]
+    @State private var model: SearchModel?
 
     var body: some View {
+        let results = model?.results
+        let failed = model?.failed
         ScrollView {
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 VStack(spacing: KivoTokens.spacing * 3) {
@@ -50,23 +33,23 @@ struct SearchView: View {
             } else if let results {
                 if results.works.isEmpty && results.people.isEmpty && results.collections.isEmpty {
                     MessageView(
-                        String(localized: "No results for “\(searched)”."),
+                        String(localized: "No results for “\(model?.searched ?? "")”."),
                         action: (label: String(localized: "Clear search"), run: { query = "" })
                     )
                 } else {
                     LazyVStack(alignment: .leading, spacing: KivoTokens.spacing * 6) {
                         if !results.people.isEmpty { peopleRow(results.people) }
-                        ForEach(Self.kinds, id: \.title) { group in
+                        ForEach(SearchModel.kinds, id: \.title) { group in
                             let matches = results.works.filter { group.kinds.contains($0.kind) }
                             if !matches.isEmpty { row(group.title, matches) }
                         }
                         if !results.collections.isEmpty { collectionsRow(results.collections) }
                     }
                     .padding(.vertical, KivoTokens.spacing * 4)
-                    .opacity(running ? 0.5 : 1)
+                    .opacity(model?.running == true ? 0.5 : 1)
                 }
             } else if failed?.isUnreachable == true {
-                UnreachableView { Task { await search(query) } }
+                UnreachableView { Task { await model?.search(query) } }
                     .frame(maxWidth: .infinity)
                     .padding(.top, KivoTokens.spacing * 10)
             } else if let failed {
@@ -74,7 +57,10 @@ struct SearchView: View {
             }
         }
         .navigationTitle(String(localized: "Search"))
-        .task(id: query) { await search(query) }
+        .task(id: query) {
+            if model == nil { model = SearchModel(session: server.session) }
+            await model?.search(query)
+        }
     }
 
     private func row(_ title: String, _ works: [WorkSummary]) -> some View {
@@ -139,7 +125,7 @@ struct SearchView: View {
                                     Text(person.name)
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(palette.text)
-                                    Text(personDetail(person))
+                                    Text(SearchModel.detail(person))
                                         .font(.caption)
                                         .foregroundStyle(palette.textMuted)
                                 }
@@ -157,39 +143,4 @@ struct SearchView: View {
         }
     }
 
-    /// "Actor · 23 titles".
-    private func personDetail(_ person: PersonSummary) -> String {
-        let n = Int(person.workCount)
-        let titles = n == 1 ? String(localized: "1 title") : String(localized: "\(n) titles")
-        return "\(Words.role(person.knownRole, person.role)) · \(titles)"
-    }
-
-    private func search(_ text: String) async {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            results = nil
-            failed = nil
-            return
-        }
-        // Back from a result, the results are this query's already.
-        guard trimmed != searched || results == nil else { return }
-        do {
-            try await Task.sleep(for: .milliseconds(350))
-        } catch {
-            return
-        }
-        running = true
-        defer { running = false }
-        do {
-            let found = try await server.session.library.search(query: trimmed, limit: nil)
-            guard !Task.isCancelled else { return }
-            results = found
-            searched = trimmed
-            failed = nil
-        } catch {
-            guard !Task.isCancelled else { return }
-            failed = error.requestProblem
-            results = nil
-        }
-    }
 }

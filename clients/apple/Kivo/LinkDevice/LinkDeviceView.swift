@@ -4,19 +4,11 @@ import SwiftUI
 
 /// Link a device: scan the QR code another device shows, or enter its code,
 /// then "Allow Living Room to sign in as Anna?" with what the server saw of
-/// it, and Allow or Don't allow. A device on another server, or one asking
-/// from outside the home network, is said so. Show server address shows
-/// the server's address as text and as a QR code, for a device that can't
-/// find the server by itself.
+/// it, and Allow or Don't allow (LinkDeviceModel). A device on another
+/// server, or one asking from outside the home network, is said so. Show
+/// server address shows the server's address as text and as a QR code, for
+/// a device that can't find the server by itself.
 struct LinkDeviceView: View {
-    private enum Step {
-        case scan
-        case enter
-        case otherServer(name: String?)
-        case confirm(code: String, request: PendingDevice)
-        case done(name: String, allowed: Bool)
-    }
-
     /// A code or link to look up as the view opens, such as a `kivo://link` link's.
     var initial: String?
 
@@ -24,21 +16,22 @@ struct LinkDeviceView: View {
     @Environment(ServerModel.self) private var server
     @Environment(\.dismiss) private var dismiss
     @Environment(\.kivoPalette) private var palette
-    @State private var step: Step = QRScanner.available || QRScanner.testScan != nil ? .scan : .enter
+    @State private var model: LinkDeviceModel?
+    @State private var scanning = QRScanner.available || QRScanner.testScan != nil
     @State private var typed = ""
-    @State private var busy = false
-    @State private var message: String?
 
     var body: some View {
         ScrollView {
             VStack(spacing: KivoTokens.spacing * 6) {
-                content
-                if let message {
-                    Text(message)
-                        .foregroundStyle(palette.danger)
-                        .multilineTextAlignment(.center)
+                if let model {
+                    content(model)
+                    if let message = model.message {
+                        Text(message)
+                            .foregroundStyle(palette.danger)
+                            .multilineTextAlignment(.center)
+                    }
+                    if model.busy { ProgressView() }
                 }
-                if busy { ProgressView() }
             }
             .padding(KivoTokens.spacing * 6)
             .frame(maxWidth: KivoTokens.Container.form)
@@ -48,23 +41,25 @@ struct LinkDeviceView: View {
         .navigationTitle(String(localized: "Link a device"))
         .toolbarTitleDisplayMode(.inline)
         .task {
+            let model = model ?? LinkDeviceModel(core: app.core, session: server.session)
+            self.model = model
             if let initial {
-                await look(up: initial)
-            } else if case .scan = step, let scan = QRScanner.testScan {
-                await look(up: scan)
+                await look(up: initial, in: model)
+            } else if scanning, let scan = QRScanner.testScan {
+                await look(up: scan, in: model)
             }
         }
     }
 
-    @ViewBuilder private var content: some View {
-        switch step {
-        case .scan:
-            QRScanner { scanned in Task { await look(up: scanned) } }
+    @ViewBuilder private func content(_ model: LinkDeviceModel) -> some View {
+        switch model.step {
+        case .enter where scanning:
+            QRScanner { scanned in Task { await look(up: scanned, in: model) } }
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: KivoTokens.Radius.lg))
             Text("Scan the QR code on the other device.")
                 .foregroundStyle(palette.textMuted)
-            Button(String(localized: "Enter code instead")) { step = .enter }
+            Button(String(localized: "Enter code instead")) { scanning = false }
             serverAddress
         case .enter:
             TextField(String(localized: "Code"), text: $typed)
@@ -74,15 +69,15 @@ struct LinkDeviceView: View {
                 .font(.title.monospaced())
                 .multilineTextAlignment(.center)
                 .textFieldStyle(.roundedBorder)
-                .onSubmit { Task { await look(up: typed) } }
+                .onSubmit { Task { await look(up: typed, in: model) } }
             Text("Codes are six letters and digits.")
                 .font(.footnote)
                 .foregroundStyle(palette.textMuted)
-            Button(String(localized: "Continue")) { Task { await look(up: typed) } }
+            Button(String(localized: "Continue")) { Task { await look(up: typed, in: model) } }
                 .buttonStyle(.borderedProminent)
-                .disabled(typed.isEmpty || busy)
+                .disabled(typed.isEmpty || model.busy)
             if QRScanner.available {
-                Button(String(localized: "Scan the QR code instead")) { step = .scan }
+                Button(String(localized: "Scan the QR code instead")) { scanning = true }
             }
             serverAddress
         case let .otherServer(name):
@@ -102,7 +97,7 @@ struct LinkDeviceView: View {
                 .kivoStyle(KivoTokens.TextSize.xl, weight: KivoTokens.Weight.semibold)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("link-question")
-            Text(Self.context(of: request))
+            Text(LinkDeviceModel.context(of: request))
                 .foregroundStyle(palette.textMuted)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("link-context")
@@ -115,12 +110,12 @@ struct LinkDeviceView: View {
                 .accessibilityIdentifier("link-warning")
             }
             HStack(spacing: KivoTokens.spacing * 3) {
-                Button(String(localized: "Don't allow")) { Task { await answer(code: code, request: request, allow: false) } }
+                Button(String(localized: "Don't allow")) { Task { await model.answer(code: code, request: request, allow: false) } }
                     .buttonStyle(.bordered)
-                Button(String(localized: "Allow")) { Task { await answer(code: code, request: request, allow: true) } }
+                Button(String(localized: "Allow")) { Task { await model.answer(code: code, request: request, allow: true) } }
                     .buttonStyle(.borderedProminent)
             }
-            .disabled(busy)
+            .disabled(model.busy)
         case let .done(name, allowed):
             Image(systemName: allowed ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .font(.system(size: 56))
@@ -138,71 +133,8 @@ struct LinkDeviceView: View {
             .padding(.top, KivoTokens.spacing * 4)
     }
 
-    /// The device waiting on the code in what was scanned or typed.
-    private func look(up text: String) async {
-        guard !busy else { return }
-        guard let link = LinkCode.companion.parseOrNull(text: text) else {
-            message = String(localized: "That isn't a code. Codes are six letters and digits.")
-            return
-        }
-        if let other = link.server, other != server.session.savedServer.value.id {
-            let name = try? await app.core.savedServers().first { $0.id == other }?.name
-            message = nil
-            step = .otherServer(name: name)
-            return
-        }
-        busy = true
-        defer { busy = false }
-        do {
-            let request = try await server.session.link.pendingDevice(code: link.code)
-            message = nil
-            step = .confirm(code: link.code, request: request)
-        } catch {
-            message = codeFailure(error.requestProblem)
-        }
-    }
-
-    private func answer(code: String, request: PendingDevice, allow: Bool) async {
-        busy = true
-        defer { busy = false }
-        let link = server.session.link
-        guard let done = try? await (allow ? link.approve(code: code) : link.deny(code: code)) else { return }
-        if let failed = done.problemOrNull() {
-            message = codeFailure(failed)
-        } else {
-            message = nil
-            step = .done(name: request.name, allowed: allow)
-        }
-    }
-
-    private func codeFailure(_ problem: RequestProblem) -> String {
-        (problem as? RequestProblem.Refused)?.status == 404
-            ? String(localized: "That code didn't work. Check the other device for a new one.")
-            : problem.sentence
-    }
-
-    /// What the server saw of the asking device: "Android TV · On your home network · Just now".
-    static func context(of request: PendingDevice) -> String {
-        let place = request.nearby ? String(localized: "On your home network") : String(localized: "Not on your home network")
-        let started = Date(timeIntervalSince1970: TimeInterval(request.startedAt.toEpochMilliseconds()) / 1000)
-        let when = Date.now.timeIntervalSince(started) < 60
-            ? String(localized: "Just now")
-            : started.formatted(.relative(presentation: .named))
-        return [Platform.name(request.platform), place, when].compactMap { $0 }.joined(separator: " · ")
-    }
-}
-
-/// The platforms a client says it runs on, for people.
-enum Platform {
-    static func name(_ platform: ClientPlatform?) -> String? {
-        switch platform {
-        case .androidTv: String(localized: "Android TV")
-        case .appleTv: String(localized: "Apple TV")
-        case .iphone: String(localized: "iPhone")
-        case .ipad: String(localized: "iPad")
-        case .androidPhone: String(localized: "Android phone")
-        case .browser: String(localized: "Browser")
-        case .cast, .tizen, .webos, .unknown, nil: nil
-        }
+    /// The device waiting on the code in what was scanned or typed; the scanner gives way once it's found.
+    private func look(up text: String, in model: LinkDeviceModel) async {
+        if await model.look(up: text) { scanning = false }
     }
 }

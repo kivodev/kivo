@@ -9,15 +9,6 @@ import UIKit
 @MainActor
 @Observable
 final class AppModel {
-    /// The subtitles this app shows, for the capability report: plain text
-    /// as the stream's renditions, which AVPlayer draws, and PGS and styled
-    /// ASS as files the overlay draws (SubtitleOverlay).
-    static let subtitles = [
-        SubtitleEntry(codec: "webvtt", delivery: ["stream"], containers: nil),
-        SubtitleEntry(codec: "ass", delivery: ["external"], containers: nil),
-        SubtitleEntry(codec: "hdmv_pgs_subtitle", delivery: ["external"], containers: nil),
-    ]
-
     let core: KivoClient
     let display: Display
     /// The downloads' background transfers, for the app's life.
@@ -67,7 +58,7 @@ final class AppModel {
             name: AppleIdentity.modelName,
             identity: AppleIdentity.current,
             clientId: clientId,
-            subtitles: Self.subtitles,
+            subtitles: SubtitleOverlayView.shown,
             // The engine plays any audio track of a file (AVPlayerEngine).
             trackSelection: true,
             transport: transport

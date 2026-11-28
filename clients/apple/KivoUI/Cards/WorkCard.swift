@@ -54,6 +54,7 @@ public struct WorkCard: View {
                     .fill(palette.placeholder)
                     .kivoShadow(palette.cardShadow)
             }
+            .cardLift()
 
             switch caption {
             case .twoLines:
