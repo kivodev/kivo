@@ -458,6 +458,24 @@ class DownloadsTest {
     }
 
     @Test
+    fun aDownloadAskedForBeforeAnyRefreshIsFollowed() = runTest {
+        val h = Harness(this)
+        h.remote = download(state = "preparing", progress = 0.1, remaining = 600_000)
+        h.connect()
+        h.downloads.download(DownloadRequest("w1"))
+        advanceUntilIdle()
+
+        // No live event ever arrives: the poll alone moves it.
+        val following = launch { h.downloads.followPreparing() }
+        h.remote = download(state = "preparing", progress = 0.4, remaining = 300_000)
+        h.clock += PREPARING_POLL.inWholeMilliseconds
+        advanceTimeBy(PREPARING_POLL)
+        runCurrent()
+        assertEquals(DownloadStatus.Converting(0.4, 300_000), h.item()?.status)
+        following.cancel()
+    }
+
+    @Test
     fun aServerRestartMidConversionIsRecoveredFrom() = runTest {
         val h = Harness(this)
         h.remote = download(state = "queued")
