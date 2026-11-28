@@ -122,17 +122,7 @@ func (g *modeler) flatten(owner string, s *yaml.Node, seen map[string]bool) ([]p
 	required := map[string]bool{}
 	var props []property
 	add := func(ps []property, req map[string]bool) {
-		for _, p := range ps {
-			replaced := false
-			for i := range props {
-				if props[i].name == p.name {
-					props[i], replaced = p, true
-				}
-			}
-			if !replaced {
-				props = append(props, p)
-			}
-		}
+		props = mergeProperties(props, ps)
 		for k := range req {
 			required[k] = true
 		}
@@ -151,20 +141,47 @@ func (g *modeler) flatten(owner string, s *yaml.Node, seen map[string]bool) ([]p
 			add(g.flatten(partOwner, part, seen))
 		}
 	}
+	add(ownProperties(owner, s), requiredNames(s))
+	return props, required
+}
+
+// mergeProperties appends ps to props, a property already there taking the
+// later one's place.
+func mergeProperties(props, ps []property) []property {
+	for _, p := range ps {
+		replaced := false
+		for i := range props {
+			if props[i].name == p.name {
+				props[i], replaced = p, true
+			}
+		}
+		if !replaced {
+			props = append(props, p)
+		}
+	}
+	return props
+}
+
+// ownProperties is the properties a schema declares itself, in order.
+func ownProperties(owner string, s *yaml.Node) []property {
 	var own []property
 	if p := lookup(s, "properties"); p != nil {
 		for i := 0; i+1 < len(p.Content); i += 2 {
 			own = append(own, property{p.Content[i].Value, owner, p.Content[i+1]})
 		}
 	}
+	return own
+}
+
+// requiredNames is the set of names a schema's required lists.
+func requiredNames(s *yaml.Node) map[string]bool {
 	req := map[string]bool{}
 	if r := lookup(s, "required"); r != nil {
 		for _, n := range r.Content {
 			req[n.Value] = true
 		}
 	}
-	add(own, req)
-	return props, required
+	return req
 }
 
 // typeOf is a property's BrighterScript type. ParseJson gives a whole
@@ -175,21 +192,7 @@ func (g *modeler) typeOf(owner, prop string, s *yaml.Node) string {
 		return "dynamic"
 	}
 	if ref := scalar(s, "$ref"); ref != "" {
-		name := refName(ref)
-		target := lookup(g.schemas, name)
-		if target == nil {
-			return "dynamic"
-		}
-		if g.isObject(target) {
-			return name
-		}
-		if lookup(target, "enum") != nil && scalar(target, "type") == "string" {
-			return name
-		}
-		if lookup(target, "oneOf") != nil || lookup(target, "anyOf") != nil {
-			return "object"
-		}
-		return g.typeOf(owner, prop, target)
+		return g.refType(owner, prop, refName(ref))
 	}
 	if lookup(s, "allOf") != nil && lookup(s, "properties") == nil {
 		// A reference wrapped to add a description.
@@ -225,6 +228,21 @@ func (g *modeler) typeOf(owner, prop string, s *yaml.Node) string {
 		return g.inlineObject(owner, prop, s)
 	}
 	return "dynamic"
+}
+
+// refType is the type of a reference to a named schema: its interface or
+// enum, or the type of what it names.
+func (g *modeler) refType(owner, prop, name string) string {
+	target := lookup(g.schemas, name)
+	switch {
+	case target == nil:
+		return "dynamic"
+	case g.isObject(target), lookup(target, "enum") != nil && scalar(target, "type") == "string":
+		return name
+	case lookup(target, "oneOf") != nil || lookup(target, "anyOf") != nil:
+		return "object"
+	}
+	return g.typeOf(owner, prop, target)
 }
 
 // inlineObject is the interface of an inline object, made the first time
