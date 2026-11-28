@@ -223,7 +223,8 @@ class KivoSession internal constructor(
 
     /**
      * Keeps the live events open until cancelled, as the app goes to the
-     * background, or signed out; tells the downloads what they say, and
+     * background, or signed out; tells the downloads what they say, has
+     * them follow the ones the server is preparing, and
      * reads the user again after each reconnect. The app runs it in the
      * foreground, so coming back picks the server's address again and reads
      * what the server says of itself, as each reconnect does, and on a
@@ -232,7 +233,12 @@ class KivoSession internal constructor(
      */
     @Throws(Exception::class)
     internal suspend fun runLiveEvents() = coroutineScope {
-        val downloads = core.downloads?.let { d -> launch { invalidations.collect { d.invalidated(it) } } }
+        val downloads = core.downloads?.let { d ->
+            launch {
+                launch { d.followPreparing() }
+                invalidations.collect { d.invalidated(it) }
+            }
+        }
         val user = launch { userSettings.refreshOn(invalidations) }
         val info = launch {
             launch { readServerInfo() }

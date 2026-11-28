@@ -46,7 +46,7 @@ public struct ArtworkSource: Sendable {
     /// server's images on disk, used without asking the server again, as an
     /// image by its ID never changes. URLSession's own cache is off.
     public static func configureCaches() {
-        ImagePipeline.shared = ImagePipeline(configuration: .withDataCache(name: "com.kivo.player.artwork", sizeLimit: 500 * 1024 * 1024))
+        ImagePipeline.shared = ImagePipeline(configuration: .withDataCache(name: "watch.kivo.player.artwork", sizeLimit: 500 * 1024 * 1024))
     }
 }
 

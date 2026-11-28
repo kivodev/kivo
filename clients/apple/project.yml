@@ -5,7 +5,7 @@ name: Kivo
 minimumXcodeGenVersion: 2.46.0
 
 options:
-  bundleIdPrefix: com.kivo
+  bundleIdPrefix: watch.kivo
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -71,7 +71,7 @@ targets:
         product: NukeUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kivo.player.ui
+        PRODUCT_BUNDLE_IDENTIFIER: watch.kivo.player.ui
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
 
@@ -172,7 +172,7 @@ targets:
           - audio
           - fetch
         BGTaskSchedulerPermittedIdentifiers:
-          - com.kivo.player.downloads.refresh
+          - watch.kivo.player.downloads.refresh
         # Reaching a server on the local network, finding it by Bonjour as
         # the _kivo._tcp service it advertises, and finding Cast devices
         # running Kivo's receiver (app ID 2457CC30, CAST_APP_ID in the core)
@@ -186,7 +186,7 @@ targets:
         # kivo://link?code=…&server=…, which the web's /link page offers to a
         # phone that opened it from the system Camera.
         CFBundleURLTypes:
-          - CFBundleURLName: com.kivo.player.link
+          - CFBundleURLName: watch.kivo.player.link
             CFBundleURLSchemes:
               - kivo
         # A self-hosted server is reached at whatever address the household

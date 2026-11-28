@@ -229,7 +229,7 @@ msgstr "Select at least one library."
 msgid "Generating"
 msgstr "Generating"
 
-#: src/features/user/HomeRowsEditor.tsx
+#: src/features/user/HomeRowOrder.tsx
 msgid "Shown: {name}"
 msgstr "Shown: {name}"
 
@@ -1208,7 +1208,7 @@ msgstr "{name} (missing)"
 msgid "Grid"
 msgstr "Grid"
 
-#: src/features/home/rowTitle.ts
+#: src/features/home/useHomeRowTitle.ts
 msgid "Recently Added"
 msgstr "Recently Added"
 
@@ -1660,7 +1660,7 @@ msgstr "Narrated"
 msgid "{n, plural, one {# book} other {# books}}"
 msgstr "{n, plural, one {# book} other {# books}}"
 
-#: src/features/home/rowTitle.ts
+#: src/features/home/useHomeRowTitle.ts
 msgid "Continue Watching"
 msgstr "Continue Watching"
 
@@ -1948,7 +1948,7 @@ msgstr "Reload"
 msgid "Picture in picture"
 msgstr "Picture in picture"
 
-#: src/app/RouteStates.tsx
+#: src/app/RouteError.tsx
 #: src/features/auth/SignInScreen.tsx
 #: src/features/auth/UpdateScreen.tsx
 #: src/features/user/SettingsScreen.tsx
@@ -2318,7 +2318,7 @@ msgstr "Can't reach the server. Reconnecting…"
 msgid "Cleaning up"
 msgstr "Cleaning up"
 
-#: src/features/user/HomeRowsEditor.tsx
+#: src/features/user/HomeRowOrder.tsx
 msgid "Move down: {name}"
 msgstr "Move down: {name}"
 
@@ -2764,7 +2764,7 @@ msgstr "Raise fs.inotify.max_user_watches on the host to watch every folder."
 msgid "{name} finished"
 msgstr "{name} finished"
 
-#: src/components/endsAt.ts
+#: src/components/useEndsAt.ts
 msgid "Ends at {time}"
 msgstr "Ends at {time}"
 
@@ -3157,7 +3157,7 @@ msgid "Collection"
 msgstr "Collection"
 
 #: src/features/lists/ListScreen.tsx
-#: src/features/user/HomeRowsEditor.tsx
+#: src/features/user/HomeRowOrder.tsx
 msgid "These rules no longer work"
 msgstr "These rules no longer work"
 
@@ -3638,7 +3638,7 @@ msgstr "Books"
 msgid "OpenSubtitles username"
 msgstr "OpenSubtitles username"
 
-#: src/features/user/HomeRowsEditor.tsx
+#: src/features/user/HomeRowOrder.tsx
 msgid "Move up: {name}"
 msgstr "Move up: {name}"
 
@@ -3679,7 +3679,7 @@ msgstr "Top rated"
 msgid "Playback was stopped."
 msgstr "Playback was stopped."
 
-#: src/features/home/rowTitle.ts
+#: src/features/home/useHomeRowTitle.ts
 msgid "Recently Added in {name}"
 msgstr "Recently Added in {name}"
 
@@ -4363,7 +4363,7 @@ msgstr "Loading"
 msgid "Limit"
 msgstr "Limit"
 
-#: src/features/user/HomeRowsEditor.tsx
+#: src/features/user/HomeRowOrder.tsx
 msgid "Home rows"
 msgstr "Home rows"
 
@@ -4480,7 +4480,7 @@ msgstr "Exit Kivo?"
 msgid "Move the data folder to a local disk."
 msgstr "Move the data folder to a local disk."
 
-#: src/features/home/rowTitle.ts
+#: src/features/home/useHomeRowTitle.ts
 msgid "Continue Listening"
 msgstr "Continue Listening"
 

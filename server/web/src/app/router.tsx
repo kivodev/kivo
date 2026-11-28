@@ -30,7 +30,7 @@ import { createUpdateRoute } from "@/routes/update";
 import { watchRoute } from "@/routes/watch";
 import { workRoute } from "@/routes/work";
 import { isPackaged, isTv } from "@/tv/flag";
-import { RouteError } from "./RouteStates";
+import { RouteError } from "./RouteError";
 
 // TV has no admin area; its routes and screens stay in the web build.
 const adminRoutes = isTv ? [] : [createAdminRouteTree()];

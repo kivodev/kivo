@@ -24,7 +24,7 @@ func TestTaskNames(t *testing.T) {
 	boot.DataDir, boot.CacheDir, boot.BackupDir = filepath.Join(dir, "data"), filepath.Join(dir, "cache"), filepath.Join(dir, "backups")
 	boot.FFmpeg, boot.FFprobe = filepath.Join(dir, "ffmpeg"), filepath.Join(dir, "ffprobe")
 	bus := events.NewBus()
-	s, err := wire(context.Background(), boot, health.NewLogs(10, bus), bus)
+	s, err := newServer(context.Background(), boot, health.NewLogs(10, bus), bus)
 	if err != nil {
 		t.Fatal(err)
 	}

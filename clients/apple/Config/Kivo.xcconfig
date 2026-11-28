@@ -1,7 +1,7 @@
 // Settings for both configurations of every target (project.yml).
 
 // The app's bundle identifier: a placeholder until it's registered.
-KIVO_BUNDLE_ID = com.kivo.player
+KIVO_BUNDLE_ID = watch.kivo.player
 
 // Signing is automatic, with the team in Signing.local.xcconfig, which
 // isn't committed: copy Signing.local.xcconfig.example and fill it in.

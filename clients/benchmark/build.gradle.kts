@@ -37,9 +37,9 @@
 //   adb -s $S install -r android/app/build/outputs/apk/benchmarkRelease/app-benchmarkRelease.apk
 //   adb -s $S install -r benchmark/build/outputs/apk/benchmarkRelease/benchmark-benchmarkRelease.apk
 //   adb -s $S shell am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE \
-//     com.mmcdole.kivo/androidx.profileinstaller.ProfileInstallReceiver   (result=1: installed, 2: already)
-//   adb -s $S shell cmd package compile -f -m speed-profile com.mmcdole.kivo
-//   adb -s $S shell dumpsys package dexopt | grep -A3 '\[com.mmcdole.kivo\]'   (status=speed-profile)
+//     watch.kivo.player/androidx.profileinstaller.ProfileInstallReceiver   (result=1: installed, 2: already)
+//   adb -s $S shell cmd package compile -f -m speed-profile watch.kivo.player
+//   adb -s $S shell dumpsys package dexopt | grep -A3 '\[watch.kivo.player\]'   (status=speed-profile)
 //   adb -s $S shell am instrument -w -e class com.mmcdole.kivo.benchmark.BrowseBenchmark \
 //     com.mmcdole.kivo.benchmark/androidx.test.runner.AndroidJUnitRunner
 // TracksPanelBenchmark also needs `-e work <ID>`, a work with several audio and

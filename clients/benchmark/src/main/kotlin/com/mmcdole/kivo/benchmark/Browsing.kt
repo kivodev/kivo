@@ -14,7 +14,7 @@ import java.util.regex.Pattern
 // Browsing with the D-pad, shared by BrowseBenchmark, which measures it, and
 // BaselineProfileGenerator, which records the code it runs.
 
-internal const val PACKAGE = "com.mmcdole.kivo"
+internal const val PACKAGE = "watch.kivo.player"
 private const val ACTIVITY = "com.mmcdole.kivo.android.MainActivity"
 private val CARD: Pattern = Pattern.compile("card:.*")
 private const val HOLD_MS = 3_000L

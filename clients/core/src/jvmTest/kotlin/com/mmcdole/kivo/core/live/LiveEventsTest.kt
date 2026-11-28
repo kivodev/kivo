@@ -31,6 +31,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -159,6 +160,40 @@ class LiveEventsTest {
                 running.cancel()
             }
             assertEquals(listOf<String?>("Bearer tok", "Bearer tok"), server.upgrades)
+        }
+    }
+
+    @Test
+    fun aSilentSocketOpensAgainWhileKeepAlivesKeepItOpen() = runBlocking {
+        val first: Script = {
+            snapshot()
+            // Keep-alives for well past the silence allowed keep the socket.
+            repeat(8) {
+                delay(100.milliseconds)
+                text("""{"type":"keepAlive"}""")
+            }
+            text("""{"type":"event","kind":"workChanged","workId":"w1"}""")
+            // Then nothing, as from a socket a network change left half-open.
+            awaitCancellation()
+        }
+        val second: Script = {
+            snapshot()
+            text("""{"type":"event","kind":"workChanged","workId":"w2"}""")
+            awaitCancellation()
+        }
+        EventServer(listOf(first, second)).use { server ->
+            val live = LiveEvents(server.connection("tok"), silence = 400.milliseconds) { 10.milliseconds }
+            withTimeout(10.seconds) {
+                val received = async { live.invalidations.take(3).toList() }
+                yield()
+                val running = launch { live.run() }
+                assertEquals(
+                    listOf(Invalidation.WorkChanged("w1"), Invalidation.Everything, Invalidation.WorkChanged("w2")),
+                    received.await(),
+                )
+                running.cancel()
+            }
+            assertEquals(2, server.upgrades.size)
         }
     }
 

@@ -6,17 +6,17 @@ import { homeQueries, homeRowKinds } from "@/api/home";
 import { libraryQueries } from "@/api/libraries";
 import type { HomeRow } from "@/api/schemas";
 import { useIsAdmin } from "@/api/users";
-import { useDocumentTitle } from "@/components/documentTitle";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { LoadError } from "@/components/LoadError";
 import { Row } from "@/components/Row";
 import { HomeSkeleton, RowSkeleton } from "@/components/Skeleton";
+import { useDocumentTitle } from "@/components/useDocumentTitle";
 import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { isTv } from "@/tv/flag";
 import { useTvEmptyScreen } from "@/tv/focus";
-import { useHomeRowTitle } from "./rowTitle";
+import { useHomeRowTitle } from "./useHomeRowTitle";
 
 /** Rows of books, whose covers are square. */
 const bookRows = new Set<HomeRow["kind"]>(["continueListening"]);

@@ -11,13 +11,13 @@ import { TvFocusable, TvFocusGroup } from "@/tv/focus";
 import { TV_DOCK } from "@/tv/spatial";
 import { KeyDispatcher } from "./keyDispatcher";
 import { type KeyCommand, mediaKeyCommand } from "./keys";
-import { useMediaSession } from "./mediaSession";
 import { NowPlaying } from "./NowPlaying";
 import { SkipControls } from "./SkipControls";
 import { backMs, forwardMs } from "./skips";
 import { useBookPlayer } from "./useBookPlayer";
 import { useFailureText } from "./useFailureText";
 import { useListening } from "./useListening";
+import { useMediaSession } from "./useMediaSession";
 import { usePlayerKeys } from "./usePlayerKeys";
 
 /**

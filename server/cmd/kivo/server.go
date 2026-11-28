@@ -76,7 +76,7 @@ func serve(configPath string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return inTray(ctx, boot, func(ctx context.Context) error {
+	return withTray(ctx, boot, func(ctx context.Context) error {
 		bus := events.NewBus()
 		defer bus.Close()
 		logs := setupLogging(boot, bus)
@@ -108,7 +108,7 @@ func setupLogging(boot config.Bootstrap, bus *events.Bus) *health.Logs {
 func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *events.Bus) error {
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()
-	s, err := wire(ctx, boot, logs, bus)
+	s, err := newServer(ctx, boot, logs, bus)
 	if err != nil {
 		return err
 	}
@@ -132,9 +132,9 @@ func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *eve
 	}
 	var wg sync.WaitGroup
 	errs := make(chan error, len(runners)+len(boot.Listen)) // one slot per runner and listener, so no send ever blocks
-	for name, run := range runners {
+	for name, start := range runners {
 		wg.Go(func() {
-			if err := run(work); err != nil && !errors.Is(err, context.Canceled) {
+			if err := start(work); err != nil && !errors.Is(err, context.Canceled) {
 				errs <- fmt.Errorf("%s: %w", name, err)
 				stop()
 			}
@@ -161,7 +161,7 @@ func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *eve
 	return errors.Join(collect(errs)...)
 }
 
-// wire builds every component in dependency order, giving each the parts
+// newServer builds every component in dependency order, giving each the parts
 // built before it and its Options. Consumers get the small interfaces they
 // declare. Tasks are added here, before the runner runs. Each service
 // publishes its own changes on bus.
@@ -176,7 +176,7 @@ func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *eve
 //     lines.
 //
 // None of the callbacks is called before run.
-func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *events.Bus) (*server, error) {
+func newServer(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *events.Bus) (*server, error) {
 	for _, dir := range []string{boot.DataDir, boot.CacheDir, boot.BackupDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, err
@@ -270,6 +270,33 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 		return nil, fmt.Errorf("set up the API: %w", err)
 	}
 	return s, nil
+}
+
+// tasks gathers every component's tasks, in the order the Tasks page lists
+// them in each of its tables.
+func (s *server) tasks() []tasks.Task {
+	var out []tasks.Task
+	for _, ts := range [][]tasks.Task{
+		s.scanner.Tasks(), s.identifier.Tasks(), s.metadata.Tasks(), s.previews.Tasks(), s.markers.Tasks(),
+		s.subtitles.Tasks(), s.downloads.Tasks(), s.catalog.Tasks(), s.activity.Tasks(), s.databaseTasks(),
+	} {
+		out = append(out, ts...)
+	}
+	return out
+}
+
+// databaseTasks returns the server's own tasks on its database.
+func (s *server) databaseTasks() []tasks.Task {
+	return []tasks.Task{
+		{Name: "make-backup", Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(func(ctx context.Context) error {
+			path, err := s.db.Backup(ctx, s.boot.BackupDir, 7)
+			if err == nil {
+				tasks.Summarize(ctx, "Backed up to "+filepath.Base(path))
+			}
+			return err
+		})},
+		{Name: "optimize-database", Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.db.Optimize)},
+	}
 }
 
 // logTool logs which ffmpeg or ffprobe the server will run, or warns that

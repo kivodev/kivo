@@ -19,10 +19,10 @@ import { CardSkeleton } from "@/components/Skeleton";
 import { tvCardClass } from "@/components/tvLayout";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
-import { useFocusGlow } from "@/tv/focusGlow";
 import { pageScrollTarget, scrollPage } from "@/tv/glide";
 import { tvMotion } from "@/tv/motion";
 import { focusTv } from "@/tv/spatial";
+import { useFocusGlow } from "@/tv/useFocusGlow";
 
 // How long the grid counts as moving after its last fast motion, which is
 // a fast scroll, a jump or an arrow key. It's longer than the gap between
@@ -352,7 +352,7 @@ export function VirtualGrid<T extends { id: string }>({
     setFocusTarget(target.current);
   };
 
-  // On TV one glow lights the focused card and slides from card to card (tv/focusGlow.tsx).
+  // On TV one glow lights the focused card and slides from card to card (tv/useFocusGlow.tsx).
   const { glows, onFocus, onBlur } = useFocusGlow(containerRef);
 
   return (
