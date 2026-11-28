@@ -38,7 +38,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.mmcdole.kivo"
+        applicationId = "watch.kivo.player"
         minSdk = 26
         targetSdk = 37
         versionCode = appVersionCode

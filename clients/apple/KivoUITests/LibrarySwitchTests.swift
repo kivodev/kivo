@@ -66,7 +66,7 @@ final class LibrarySwitchTests: XCTestCase {
         for library in libraries { choose(library) }
 
         let metrics = ["Switch title", "Switch cards"].map {
-            XCTOSSignpostMetric(subsystem: "com.kivo.player", category: "PointsOfInterest", name: $0)
+            XCTOSSignpostMetric(subsystem: "watch.kivo.player", category: "PointsOfInterest", name: $0)
         }
         let options = XCTMeasureOptions()
         options.iterationCount = 6

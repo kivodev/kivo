@@ -7,9 +7,11 @@
 //	kivo reset-password [-config path] <username>
 //	                                        set a user's password and sign out its sessions
 //	kivo version                            print the version
+//	kivo help                               print this usage
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -29,7 +31,11 @@ func init() {
 }
 
 func main() {
-	if err := command(os.Args[1:]); err != nil {
+	err := command(os.Args[1:])
+	if errors.Is(err, flag.ErrHelp) {
+		return
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "kivo:", err)
 		alert(err)
 		os.Exit(1)
@@ -46,7 +52,20 @@ func command(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	// Only restore and reset-password take an argument. A word after a flag
+	// is most likely a command put after it, which would otherwise start
+	// the server.
+	takes := map[string]int{"restore": 1, "reset-password": 1}[cmd]
+	if fs.NArg() > takes {
+		if cmd == "serve" {
+			return fmt.Errorf("unexpected %q: put the command before its flags", fs.Arg(0))
+		}
+		return fmt.Errorf("unexpected argument %q", fs.Arg(takes))
+	}
 	switch cmd {
+	case "help":
+		fs.Usage()
+		return flag.ErrHelp
 	case "serve":
 		return serve(*configPath)
 	case "restore":

@@ -8,8 +8,8 @@ import (
 	"github.com/mmcdole/kivo/internal/config"
 )
 
-// inTray runs serve. Only Windows has a tray.
-func inTray(ctx context.Context, _ config.Bootstrap, serve func(context.Context) error) error {
+// withTray runs serve. Only Windows has a tray.
+func withTray(ctx context.Context, _ config.Bootstrap, serve func(context.Context) error) error {
 	return serve(ctx)
 }
 

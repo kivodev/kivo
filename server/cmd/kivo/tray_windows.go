@@ -26,11 +26,11 @@ var detached = func() bool {
 //go:embed kivo.ico
 var trayIcon []byte
 
-// inTray runs serve. Detached, it logs to logs\kivo.log in the data folder
+// withTray runs serve. Detached, it logs to logs\kivo.log in the data folder
 // and shows an icon in the notification area to open Kivo, open the logs
 // folder or quit. If a detached server is already running, it opens Kivo
 // instead.
-func inTray(ctx context.Context, boot config.Bootstrap, serve func(context.Context) error) error {
+func withTray(ctx context.Context, boot config.Bootstrap, serve func(context.Context) error) error {
 	if !detached {
 		return serve(ctx)
 	}

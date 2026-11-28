@@ -52,6 +52,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -80,6 +81,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import okio.FileSystem
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 import com.mmcdole.kivo.api.models.Download as ServerDownload
 import com.mmcdole.kivo.api.models.DownloadDelivery
@@ -409,6 +411,68 @@ class DownloadsTest {
         again.arrive(again.transfer("artwork"), "art".encodeToByteArray())
         again.arrive(first.transfer("part-0.mp4"), movie)
         assertEquals(DownloadStatus.Ready, again.item()?.status, "the subtitle that arrived while away was checked and kept")
+    }
+
+    @Test
+    fun theForegroundAppFollowsAConversionWithoutLiveEvents() = runTest {
+        val h = Harness(this)
+        h.remote = download(state = "preparing", progress = 0.1, remaining = 600_000)
+        h.connect()
+        h.downloads.download(DownloadRequest("w1"))
+        advanceUntilIdle()
+        assertEquals(DownloadStatus.Converting(0.1, 600_000), h.item()?.status)
+
+        val following = launch { h.downloads.followPreparing() }
+        val asked = { h.server.to("GET", "/api/v1/downloads").size }
+        h.remote = download(state = "preparing", progress = 0.5, remaining = 240_000)
+        // A live event refreshed it moments ago, so the next poll leaves it.
+        h.downloads.invalidated(Invalidation.DownloadsChanged)
+        runCurrent()
+        val afterEvent = asked()
+        h.clock += 1_000
+        advanceTimeBy(PREPARING_POLL + 1.milliseconds)
+        runCurrent()
+        assertEquals(afterEvent, asked())
+
+        // With nothing heard since, the poll asks the server.
+        h.remote = download(state = "preparing", progress = 0.7, remaining = 120_000)
+        h.clock += PREPARING_POLL.inWholeMilliseconds
+        advanceTimeBy(PREPARING_POLL)
+        runCurrent()
+        assertEquals(DownloadStatus.Converting(0.7, 120_000), h.item()?.status)
+
+        // Once it's ready, nothing is left to follow, so the server isn't asked again.
+        h.remote = download(state = "ready")
+        h.clock += PREPARING_POLL.inWholeMilliseconds
+        advanceTimeBy(PREPARING_POLL)
+        runCurrent()
+        assertTrue(h.item()?.status is DownloadStatus.Downloading)
+        val done = asked()
+        repeat(3) {
+            h.clock += PREPARING_POLL.inWholeMilliseconds
+            advanceTimeBy(PREPARING_POLL)
+            runCurrent()
+        }
+        assertEquals(done, asked())
+        following.cancel()
+    }
+
+    @Test
+    fun aDownloadAskedForBeforeAnyRefreshIsFollowed() = runTest {
+        val h = Harness(this)
+        h.remote = download(state = "preparing", progress = 0.1, remaining = 600_000)
+        h.connect()
+        h.downloads.download(DownloadRequest("w1"))
+        advanceUntilIdle()
+
+        // No live event ever arrives: the poll alone moves it.
+        val following = launch { h.downloads.followPreparing() }
+        h.remote = download(state = "preparing", progress = 0.4, remaining = 300_000)
+        h.clock += PREPARING_POLL.inWholeMilliseconds
+        advanceTimeBy(PREPARING_POLL)
+        runCurrent()
+        assertEquals(DownloadStatus.Converting(0.4, 300_000), h.item()?.status)
+        following.cancel()
     }
 
     @Test

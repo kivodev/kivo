@@ -13,7 +13,7 @@ import {
 } from "react";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
-import { useFocusGlow } from "@/tv/focusGlow";
+import { useFocusGlow } from "@/tv/useFocusGlow";
 import type { ArtworkShape } from "./Artwork";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
@@ -223,7 +223,7 @@ export function Row<T>({
        * cards beside it.
        */}
       <div className="tv:-my-(--layout-tv-row-bleed) tv:-mr-(--layout-tv-row-end) tv:-ml-(--layout-tv-row-bleed) tv:overflow-clip tv:py-(--layout-tv-row-bleed) tv:pr-(--layout-tv-row-end) tv:pl-(--layout-tv-row-bleed)">
-        {/* On TV one glow lights the focused card, riding the track as it slides (tv/focusGlow.tsx). */}
+        {/* On TV one glow lights the focused card, riding the track as it slides (tv/useFocusGlow.tsx). */}
         <ul
           ref={list}
           data-part="row-cards"

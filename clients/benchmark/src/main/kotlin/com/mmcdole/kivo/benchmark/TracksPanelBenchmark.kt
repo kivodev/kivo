@@ -102,7 +102,7 @@ class TracksPanelBenchmark {
     }
 
     private companion object {
-        const val PACKAGE = "com.mmcdole.kivo"
+        const val PACKAGE = "watch.kivo.player"
         const val ITERATIONS = 10
         const val TIMEOUT_MS = 10_000L
         const val FOCUS_WAIT_MS = 1_000L

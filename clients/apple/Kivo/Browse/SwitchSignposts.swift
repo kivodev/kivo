@@ -5,7 +5,7 @@ import os
 /// choice to its title showing, and to its first cards.
 @MainActor
 enum SwitchSignposts {
-    static let subsystem = "com.kivo.player"
+    static let subsystem = "watch.kivo.player"
     private static let signposter = OSSignposter(subsystem: subsystem, category: .pointsOfInterest)
     private static var title: OSSignpostIntervalState?
     private static var cards: OSSignpostIntervalState?

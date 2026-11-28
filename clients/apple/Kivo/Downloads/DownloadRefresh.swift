@@ -7,7 +7,7 @@ import KivoCore
 /// leaves the foreground with a download in line or converting there.
 enum DownloadRefresh {
     /// As Info.plist permits it (project.yml).
-    static let identifier = "com.kivo.player.downloads.refresh"
+    static let identifier = "watch.kivo.player.downloads.refresh"
 
     /// Asks iOS for a refresh in a quarter of an hour or so, in place of any asked for before.
     static func schedule() {
