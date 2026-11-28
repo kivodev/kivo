@@ -21,8 +21,8 @@ import KivoCore
 /// meanwhile arrive as the sessions are made again.
 final class BackgroundTransport: NSObject, DownloadTransport, URLSessionDownloadDelegate, @unchecked Sendable {
     /// The sessions' identifiers, each the app's alone: Wi-Fi only, and cellular allowed.
-    static let wifiIdentifier = "com.kivo.player.downloads.wifi"
-    static let cellularIdentifier = "com.kivo.player.downloads.cellular"
+    static let wifiIdentifier = "watch.kivo.player.downloads.wifi"
+    static let cellularIdentifier = "watch.kivo.player.downloads.cellular"
     static let identifiers: Set<String> = [wifiIdentifier, cellularIdentifier]
     /// How long a transfer may take before it fails, kept what it fetched,
     /// so one stuck on an address that no longer answers doesn't wait for

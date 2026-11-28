@@ -33,7 +33,7 @@ cp Config/Signing.local.xcconfig.example Config/Signing.local.xcconfig
 
 Put your Team ID in it (Xcode › Settings › Accounts, or developer.apple.com
 under Membership details). The file isn't committed. If the bundle
-identifier `com.kivo.player` is taken for your team, set `KIVO_BUNDLE_ID` in
+identifier `watch.kivo.player` is taken for your team, set `KIVO_BUNDLE_ID` in
 the same file. A free Apple ID works, but the app expires after 7 days.
 
 ## 3. Build the core and generate the project
@@ -82,7 +82,7 @@ xcodebuild -project Kivo.xcodeproj -scheme Kivo \
   -derivedDataPath build/DerivedData build
 xcrun simctl boot 'iPhone 17'; open -a Simulator
 xcrun simctl install booted build/DerivedData/Build/Products/Debug-iphonesimulator/Kivo.app
-xcrun simctl launch booted com.kivo.player
+xcrun simctl launch booted watch.kivo.player
 ```
 
 The unit tests:
@@ -101,7 +101,7 @@ sign-in connects to instead of browsing the network. `simctl` passes it with
 the `SIMCTL_CHILD_` prefix:
 
 ```sh
-SIMCTL_CHILD_KIVO_SERVER=http://192.168.1.10:8484 xcrun simctl launch booted com.kivo.player
+SIMCTL_CHILD_KIVO_SERVER=http://192.168.1.10:8484 xcrun simctl launch booted watch.kivo.player
 ```
 
 The UI tests (`KivoUITests`) launch the app with it. `xcodebuild test`
@@ -112,7 +112,7 @@ export TEST_RUNNER_KIVO_SERVER=http://192.168.1.10:8484
 export TEST_RUNNER_KIVO_USERNAME=…
 export TEST_RUNNER_KIVO_PASSWORD=…
 export TEST_RUNNER_KIVO_LIBRARY=Movies   # optional
-xcrun simctl uninstall booted com.kivo.player   # start signed out
+xcrun simctl uninstall booted watch.kivo.player   # start signed out
 xcodebuild -project Kivo.xcodeproj -scheme Kivo \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   -derivedDataPath build/DerivedData -resultBundlePath build/uitest.xcresult \
@@ -136,7 +136,7 @@ scripts/download-test/server.sh
 export TEST_RUNNER_KIVO_DOWNLOAD_SERVER=http://127.0.0.1:18490
 export TEST_RUNNER_KIVO_DOWNLOAD_USERNAME=test
 export TEST_RUNNER_KIVO_DOWNLOAD_PASSWORD='download test'
-xcrun simctl uninstall booted com.kivo.player
+xcrun simctl uninstall booted watch.kivo.player
 xcodebuild -project Kivo.xcodeproj -scheme Kivo \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   -derivedDataPath build/DerivedData -only-testing:KivoUITests/DownloadTests test
