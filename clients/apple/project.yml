@@ -287,7 +287,7 @@ targets:
           - _kivo._tcp
         # kivo://work/{id} and kivo://play/{id}, which Top Shelf's items open.
         CFBundleURLTypes:
-          - CFBundleURLName: com.kivo.player.link
+          - CFBundleURLName: watch.kivo.player.link
             CFBundleURLSchemes:
               - kivo
         # A self-hosted server is often plain HTTP on the local network, as
