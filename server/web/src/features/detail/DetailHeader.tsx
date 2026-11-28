@@ -82,8 +82,9 @@ export function HeroBackdrop({ image }: { image?: ImageRef }) {
       ) : (
         <div className="size-full bg-linear-to-bl from-surface-raised to-bg" />
       )}
-      <div className="absolute inset-0 bg-linear-to-r from-scrim via-scrim to-scrim-soft" />
-      <div className="absolute inset-0 bg-linear-to-t from-bg to-transparent" />
+      {/* Dark under the text on the left, clear on the right where the artwork shows. */}
+      <div className="absolute inset-0 bg-linear-to-r from-bg/90 from-0% via-bg/60 via-40% to-transparent to-85%" />
+      <div className="absolute inset-0 bg-linear-to-t from-bg from-10% to-transparent to-60%" />
     </div>
   );
 }
